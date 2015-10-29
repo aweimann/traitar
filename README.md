@@ -16,7 +16,7 @@ You may need to run ``source ~/.bashrc`` once in your current session.
 
 You can also install globally with
 
-``sudo pip install -i https://testpypi.python.org/pypi``
+``sudo pip install -i https://testpypi.python.org/pypi traitar``
 
 traitAR further needs Prodigal and HMMer available on the command line. For parallel execution it further requires GNU parallel.
 All three are available as preconfigured package for the major Linux installation e.g. for Debian / Ubuntu install by
