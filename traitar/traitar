@@ -247,7 +247,7 @@ class Traitar:
         #create output directory for the gene prediction 
         gp_dir = os.path.join(self.output_dir, "gene_prediction")
         is_recompute = self.check_dir(gp_dir)
-        prodigal = "prodigal < %(in_dir)s/%(in_sample)s > %(gp_dir)s/%(out_sample)s.gff  -a %(gp_dir)s/%(out_sample)s.faa  -f gff"
+        prodigal = "prodigal < \"%(in_dir)s/%(in_sample)s\" > %(gp_dir)s/%(out_sample)s.gff  -a %(gp_dir)s/%(out_sample)s.faa  -f gff"
         prodigal_commands = []
         for i in range(len(in_samples)):
             prodigal_commands.append(prodigal % {"in_dir": self.input_dir, "in_sample": in_samples[i], "out_sample":out_samples[i], "gp_dir":gp_dir})
@@ -266,7 +266,7 @@ class Traitar:
         is_recompute = self.check_dir(a_dir_base)
         #run hmmer annotation
 
-        hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s > /dev/null %(in_dir)s/%(in_sample)s%(file_extension)s"
+        hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
         filter_and_aggregate = "hmmer2filtered_best.py %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
 
         if self.secondary_models is not None and self.primary_models.get_hmm_name() != self.secondary_models.get_hmm_name():
