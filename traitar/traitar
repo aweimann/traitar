@@ -37,7 +37,7 @@ def phenolyze(args):
 
 def new(args):
     """create new phenotype model archive"""
-    modify.new(args.models_dir, args.pf_acc2desc, args.pt_id2acc_desc, args.hmm_name, args.hmm_model_f, args.archive_name)
+    modify.new(args.models_dir, args.pf_acc2desc, args.pt_id2acc_desc, args.hmm_name, args.archive_name)
 
 def show(args):
     """show features for the given phenotype"""
@@ -89,11 +89,11 @@ class Traitar:
         self.heatmap_out = heatmap_out
         if cpu != 1 and not self.is_gnu_parallel_available:
             sys.stderr.write("GNU parallel is not available on the command line; make sure you installed it properly or decrease number of cpus to 1\n")
-            sys.exit(0)
+            sys.exit(1)
         #check if config exists
         if not os.path.isfile(os.path.join(self.phenolyzer_dir, "config.json")):
             sys.stderr.write("config.json does not exists; make sure that you have run traitar pfam")
-            sys.exit(0)
+            sys.exit(1)
             #check if Pfam hmm specified in config.json exists
         with open(os.path.join(self.phenolyzer_dir, "config.json" ), "r") as cf:
             self.config = json.load(cf)
@@ -195,11 +195,11 @@ class Traitar:
         #check if executables are available 
         if not self.is_exe("hmmsearch"):
             sys.stderr.write("hmmsearch not available on command line; please make sure you have properly installed it\n")
-            sys.exit(0)
+            sys.exit(1)
         if mode == "from_nucleotides":
             if not self.is_exe("prodigal"):
                 sys.stderr.write("prodigal not available on command line; please make sure you have properly installed it\n")
-                sys.exit(0)
+                sys.exit(1)
             print "running gene prediction with Prodigal"
             sys.stdout.flush()
             self.run_gene_prediction(self.s2f.loc[:,"sample_file_name"], self.s2f.loc[:,"sample_name"])
@@ -467,8 +467,7 @@ if __name__ == "__main__":
     new_p.add_argument("models_dir", help='directory with phenotype models to be included')
     new_p.add_argument("pf_acc2desc", help='a mapping between Pfam families and phenotype ids to accessions')
     new_p.add_argument("pt_id2acc_desc", help='a mapping between phenotype ids and descriptions')
-    new_p.add_argument("hmm_name", help='hmm database used', choices = ["dbcan", "pfam"])
-    new_p.add_argument("hmm_model_f", help='hmm database compatible with the phenotype archive')
+    new_p.add_argument("--hmm_name", help='hmm database used', choices = ["dbcan", "pfam"], default = None)
     new_p.add_argument("archive_name", help='name of the model, which is created')
     remove_p = subparsers.add_parser("remove", help = "remove phenotypes from a given phenotype archive") 
     remove_p.add_argument("archive_f", help = 'phenotype model archive file, which shall be modified')
