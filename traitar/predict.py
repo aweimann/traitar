@@ -1,8 +1,7 @@
-#!/usr/bin/env python
 import os.path
 import pandas as ps
 import sys
-from traitar.PhenotypeCollection import PhenotypeCollection
+from .PhenotypeCollection import PhenotypeCollection
 
 """predict new samples"""
 
@@ -77,16 +76,3 @@ def annotate_and_predict(pt_models, summary_f, out_dir, k):
     #aggregate predictions
     aggr_dfs = aggregate(pred_df, k, out_dir, pt_mapping)
     return pred_df
-
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser("predict phenotypes from hmmer Pfam annotation")
-    parser.add_argument("pt_models", help='archive with the phenotype predictors')
-    parser.add_argument("out_dir", help='directory for the phenotype predictions')
-    #parser.add_argument("phenotype_f", help='file with ids of phenotypes that should be predicted')
-    parser.add_argument("annotation_matrix", help='summary file with pfams')
-    parser.add_argument("-k", "--voters", default = 5, help='use this number of voters for the classification', type = int)
-    args = parser.parse_args()
-    pt_models = PhenotypeCollection(args.pt_models)
-    annotate_and_predict(pt_models, args.annotation_matrix,  args.out_dir, args.voters) 

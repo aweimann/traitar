@@ -25,6 +25,6 @@ setup(name='traitar',
         license='GNU General Public License, version 3 (GPL-3.0)',
         packages= ['traitar'],
         include_package_data = True,
-        scripts = ['traitar/traitar', 'traitar/merge_preds.py', 'traitar/heatmap.py', 'traitar/domtblout2gene_generic.py', 'traitar/predict.py', 'traitar/hmmer2filtered_best.py', 'traitar/hmm2gff.py'],
+        scripts = ['bin/traitar', 'bin/merge_preds', 'bin/heatmap', 'bin/domtblout2gene_generic', 'bin/predict', 'bin/hmmer2filtered_best', 'bin/hmm2gff'],
         zip_safe=False,
         install_requires = ["pandas >= 0.13.1", "matplotlib >= 1.3.1", "numpy >= 1.6", "scipy >= 0.13.3"])

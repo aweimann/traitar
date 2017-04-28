@@ -1,10 +1,9 @@
-#!/usr/bin/env python
 import sys
 import pandas as ps
 import tarfile
 import StringIO
 import warnings
-from traitar.PhenotypeCollection import PhenotypeCollection
+from .PhenotypeCollection import PhenotypeCollection
 warnings.filterwarnings("ignore", category=FutureWarning) 
 #ignore the following warning; this piece of code needs to be adjusted in a future version of traitar
 #/home/aaron/traitar/traitar/hmm2gff.py:226: FutureWarning: sort(columns=....) is deprecated, use sort_values(by=.....)
@@ -240,17 +239,3 @@ def run(in_file, out_gff_f, gene_gff_f, sample, gene_gff_mode, pt_models, predic
     if not gene_gff_f is None:
         gene_dict = read_gff(gene_gff_f, gene_gff_mode)
     write_hmm_gff(in_file, out_gff_f, gene_dict, sample, False, gene_gff_mode, pt_models, predicted_pts, True)
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser("map features contributing to the classfication back to the functional annotation and gene prediction")
-    parser.add_argument("input_hmm", help= 'input HMMer file')
-    parser.add_argument("output_gff_dir", help= 'output GFF file')
-    parser.add_argument("sample", help= 'sample file')
-    parser.add_argument("model_tar", help = "tar.gz file with relevant features etc.")
-    parser.add_argument("predicted_pts", help='phenotypes that were predicted for the given samples')
-    parser.add_argument("--gene_gff", help= "gene prediction track", default = None)
-    parser.add_argument("--gene_gff_type", choices = ["img", "prodigal", "ncbi", "refseq", "metagenemark", "genbank"], help= "origin of the gene prediction (Prodigal, NCBI, metagenemark)", default = None)
-    args = parser.parse_args()
-    pt_models =  PhenotypeCollection(args.model_tar)
-    run(args.input_hmm, args.output_gff_dir, args.gene_gff, args.sample, args.gene_gff_type,  pt_models, args.predicted_pts)

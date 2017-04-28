@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+from traitar.merge_preds import comb_preds
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser("combine the misclassified samples of different phenotypes into data matrices")
+    parser.add_argument("out_dir",help='the output directory')
+    parser.add_argument("phypat_dir",help='directory with the phypat predictions')
+    parser.add_argument("phypat_PGL_dir",help='directory with the phyapt+PGL predictions')
+    parser.add_argument("primary_name",help='name of the primary phenotype model collection')
+    parser.add_argument("secondary_name",help='name of the secondary phenotype collection')
+    parser.add_argument("-k", "--voters", default = 5,  help='number of classifiers used in the voting committee', type = int)
+    args = parser.parse_args()
+    comb_preds(args.phypat_dir, args.phypat_PGL_dir, args.primary_name, args.secondary_name, args.out_dir, args.voters)

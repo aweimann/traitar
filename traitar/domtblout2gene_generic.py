@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """script to create a summary matrix and a gene2hmm mapping from filtered and aggregated hmmer output files"""
-from traitar.PhenotypeCollection import PhenotypeCollection 
+from .PhenotypeCollection import PhenotypeCollection 
 import pandas as ps
 def gene2hmm(domtblout_fs, pt_models, gene2hmm_out = None, is_gene2hmm = False):
     """function to create a summary matrix and a gene2hmm mapping from filtered and aggregated hmmer output files"""
@@ -45,12 +45,3 @@ def gene2hmm(domtblout_fs, pt_models, gene2hmm_out = None, is_gene2hmm = False):
     #    with open(gene2hmm_out, 'w') as out: 
     #        out.write("%s\t%s\n" (i, ",".join(gene2hmm[i])))
     return sum_df, gene2hmm
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser("generate summary matrix from the filtered best hmmer annotation files")
-    parser.add_argument("outfile", help='summary matrix output file')
-    parser.add_argument("in_filtered_best_fs", help='file with filtered.best file name per row')
-    parser.add_argument("archive_f", help = "phenotype archive file")
-    args = parser.parse_args()
-    pt_models = PhenotypeCollection(args.archive_f)
-    sum_df, gene2hmm = gene2hmm(args.in_filtered_best_fs, pt_models, gene2hmm_out = args.outfile)

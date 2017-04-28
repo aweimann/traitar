@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+from traitar.PhenotypeCollection import PhenotypeCollection
+from traitar.domtblout2gene_generic import gene2hmm 
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser("generate summary matrix from the filtered best hmmer annotation files")
+    parser.add_argument("outfile", help='summary matrix output file')
+    parser.add_argument("in_filtered_best_fs", help='file with filtered.best file name per row')
+    parser.add_argument("archive_f", help = "phenotype archive file")
+    args = parser.parse_args()
+    pt_models = PhenotypeCollection(args.archive_f)
+    sum_df, gene2hmm = gene2hmm(args.in_filtered_best_fs, pt_models, gene2hmm_out = args.outfile)

@@ -1,0 +1,83 @@
+#! /usr/bin/env python
+from traitar.traitar import phenolyze
+from traitar.traitar import annotate 
+from traitar.traitar import remove 
+from traitar.traitar import show 
+from traitar.traitar import new 
+from traitar.traitar import evaluate 
+from traitar.get_external_data import download 
+from traitar.traitar import __version__ 
+import os
+
+if __name__ == "__main__":
+    #add phenolyzer dir to the path
+    import argparse
+    class MyParser(argparse.ArgumentParser):
+        def error(self, message):
+            sys.stderr.write('error: %s\n' % message)
+            self.print_help()
+            sys.exit(2)
+    #parser = MyParser("run traitar (try: traitar {phenotype, pfam, show, etc.} -h for help on the sub programs)")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--version", action = 'version', version = __version__)
+    #define parent parser to avoid defining options twice
+    parent_p = argparse.ArgumentParser(add_help=False)
+    parent_p.add_argument("input_dir", help='directory with the input data')
+    parent_p.add_argument("sample2file", help='mapping from samples to fasta files (also see gitHub help):\n sample1_file_name{tab}sample1_name\nsample2_file_name{tab}sample2_name')
+    parent_p.add_argument("mode", help='either from_genes if gene prediction amino acid fasta is available in input_dir otherwise from_nucleotides in this case Prodigal is used to determine the ORFs from the nucleotide fasta files in input_dir', choices=["from_genes", "from_nucleotides", "from_annotation_summary"])
+    parent_p.add_argument("output_dir", help='directory for the output; will be created if it doesn\'t exist yet', default='phenolyzer_output')
+
+    parent_p.add_argument("-g", "--gene_gff_type", help='if the input is amino acids the type of gene prediction GFF file can be specified for mapping the phenotype predictions to the genes', default = None, choices = ["genbank", "refseq", "img", "prodigal", "metagenemark"])
+    parent_p.add_argument("-c", "--cpus", help='number of cpus used for the individual steps; maximum is number of samples; needs parallel', default = 1)
+    #define subparser for phenotype, pfam and annotate
+    subparsers = parser.add_subparsers()
+    main_p = subparsers.add_parser("phenotype", parents=[parent_p], help = "run annotation and prediction")
+    main_p.add_argument("-p", "--primary_models", help='primary phenotype models archive')
+    main_p.add_argument("-s", "--secondary_models", help='secondary phenotype models archive')
+    main_p.add_argument("-r", "--rearrange_heatmap", help='recompute the phenotype heatmaps based on a subset of previously annotated and phenotyped samples', default = None)
+    main_p.add_argument("--no_heatmap_sample_clustering", action = 'store_true', help = "if option is set, don't cluster the phenotype heatmaps by samples and keep input ordering" )
+    main_p.add_argument("--no_heatmap_phenotype_clustering", action = 'store_true', help = "if option is set, don't cluster the heatmaps by phenotype and keep input ordering")
+    main_p.add_argument("-f", "--heatmap_format", choices = ["png", "pdf", "svg", "jpg"], default='pdf', help = "choose file format for the heatmap") 
+    main_p.set_defaults(func = phenolyze)
+    data_p = subparsers.add_parser("pfam", help = "download or set Pfam HMMs") 
+    ann_p = subparsers.add_parser("annotate", parents=[parent_p], help = "run annotation")
+    ann_p.set_defaults(func = annotate)
+    show_p = subparsers.add_parser("show", help = "show features important for classification") 
+    show_p.add_argument("phenotype", help = "phenotype under investigation")
+    show_p.add_argument("--predictor", help = "pick phypat or phypat+PGL classifier", choices = ["phypat", "phypat+PGL"], default = "phypat")
+    show_p.add_argument("--strategy", choices = ["non-zero", "majority"], default = "majority")
+    show_p.add_argument("-i", "--include_negative", action = 'store_true')
+    show_p.add_argument("-p", "--models_f", help='phenotype models archive; if set, look for the target in the phenotype in the given phenotype collection')
+    show_p.set_defaults(func = show)
+    #extend_p = subparsers.add_parser("extend", help = "extend existing phenotype models") 
+    #extend_p.add_argument("new_models_dir", help='directory with phenotype models to be included')
+    #extend_p.add_argument("model_archive", help='phenotype model archive')
+    #extend_p.add_argument("pt2acc", help='phenotype ids to accession mapping')
+    #extend_p.set_defaults(func = extend)
+    new_p = subparsers.add_parser("new", help = "create a new phenotype model archive") 
+    new_p.add_argument("models_dir", help='directory with phenotype models to be included')
+    new_p.add_argument("pf_acc2desc", help='a mapping between Pfam families and phenotype ids to accessions')
+    new_p.add_argument("pt_id2acc_desc", help='a mapping between phenotype ids and descriptions')
+    new_p.add_argument("--hmm_name", help='hmm database used', choices = ["dbcan", "pfam"], default = None)
+    new_p.add_argument("archive_name", help='name of the model, which is created')
+    remove_p = subparsers.add_parser("remove", help = "remove phenotypes from a given phenotype archive") 
+    remove_p.add_argument("archive_f", help = 'phenotype model archive file, which shall be modified')
+    remove_p.add_argument("phenotypes", help = 'phenotypes to be removed')
+    remove_p.add_argument("out_f", help = 'out file for the modified phenotype tar archive')
+    remove_p.add_argument("--keep", action = 'store_true', help = 'instead of remove the given phenotypes, keep them and forget the rest')
+    remove_p.set_defaults(func = remove)
+    new_p.set_defaults(func = new)
+    eval_p = subparsers.add_parser("evaluate", help = "compare Traitar predictions against a given standard of truth") 
+    eval_p.add_argument("traitar_pred_f",  help = "phenotype prediction matrix as return by Traitar")
+    eval_p.add_argument("gold_standard_f",  help = "phenotype matrix with standard of truth")
+    eval_p.add_argument("--are_pt_ids",  help = "set if the gold standard phenotype are index via phenotype ids rather than accessions", action = 'store_true')
+    eval_p.add_argument("--phenotype_archive",  help = "need if gold standard uses an accession index for mapping")
+    eval_p.add_argument("--min_samples", "-m", help='minimum number of positive and negative samples to consider phenotypes for calculation of the macro accuracy', default = 5)
+    eval_p.add_argument("out",  help = "output directory")
+    eval_p.set_defaults(func = evaluate)
+    data_p.add_argument("download",  help = "download Pfam HMMs into the given download directory and untar and unzip it")
+    data_p.add_argument("--local", "-l", action = 'store_true', help = "the Pfam HMMs are in the above directory with name 'Pfam-A.hmm'")
+    data_p.set_defaults(func = download)
+    args = parser.parse_args()
+    args.func(args)
+

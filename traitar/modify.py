@@ -2,7 +2,7 @@ import pandas as pd
 import tarfile
 import os
 import StringIO
-import traitar.PhenotypeCollection
+from . import PhenotypeCollection
 import sys
 
 mfs = ["%s_bias.txt", "%s_feats.txt","%s_non-zero+weights.txt"]

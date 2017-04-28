@@ -3,7 +3,7 @@ import json
 import sys
 import os
 import gzip 
-import traitar
+from . import __file__
 
 def download(args):
     """download Pfam HMMs and write download destination into config file"""

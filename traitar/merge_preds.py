@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import pandas as ps
 def flatten_df(df1, df2, name1, name2, out):
     with open(out, 'w') as f:
@@ -46,16 +45,3 @@ def comb_preds(phypat_dir, phypat_PGL_dir, primary_name, secondary_name, out_dir
     m_maj.to_csv("%s/predictions_majority-vote_combined.txt"%out_dir, index_label = None, sep = "\t")
     flatten_df(m1_maj, m2_maj, primary_name, secondary_name, "%s/predictions_flat_majority-votes_combined.txt"%out_dir)
     flatten_df(m1, m2, primary_name, secondary_name, "%s/predictions_flat_single-votes_combined.txt"%out_dir)
-
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser("combine the misclassified samples of different phenotypes into data matrices")
-    parser.add_argument("out_dir",help='the output directory')
-    parser.add_argument("phypat_dir",help='directory with the phypat predictions')
-    parser.add_argument("phypat_PGL_dir",help='directory with the phyapt+PGL predictions')
-    parser.add_argument("primary_name",help='name of the primary phenotype model collection')
-    parser.add_argument("secondary_name",help='name of the secondary phenotype collection')
-    parser.add_argument("-k", "--voters", default = 5,  help='number of classifiers used in the voting committee', type = int)
-    args = parser.parse_args()
-    comb_preds(args.phypat_dir, args.phypat_PGL_dir, args.primary_name, args.secondary_name, args.out_dir, args.voters)
