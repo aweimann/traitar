@@ -97,4 +97,4 @@ If you use Traitar in your research, please cite our preprint:
 
 **From genomes to phenotypes: Traitar, the microbial trait analyzer**  
 Aaron Weimann, Kyra Mooren, Jeremy Frank, Phillip B Pope, Andreas Bremges, Alice C McHardy  
-*bioRxiv* (2016) doi:[10.1101/043315](http://dx.doi.org/10.1101/043315)
+*mSystem* (2016) doi:[10.1101/043315](http://dx.doi.org/10.1128/mSystems.00101-16)

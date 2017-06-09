@@ -11,7 +11,6 @@ def validate(model_dir, pts):
     """validate that there is a model for each phenotype"""
     for i in pts.index:
         for j in mfs:
-            #if not os.path.exists(os.path.join(model_dir, j % str(int(i)-1))):
             if not os.path.exists(os.path.join(model_dir, j % i)):
                 sys.stderr.write("%s does not exists" % os.path.join(model_dir, j % i))
                 raise Exception
@@ -53,28 +52,32 @@ def extend(archive_f, model_dir, pf2acc_desc_f, pts, pfam_v):
     #check if phenotype models not already exist
     #add phenotype models to the archive
 
-def new(models_dir, pf2acc_f, pt2desc_f, hmm_name, hmm_model_f,  archive_name):
+def new(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name):
     """create new archive with phenotype models"""
     #read in pf and pt accessions 
     pts = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0)
+    #check if models for all phenotypes exist
     validate(models_dir, pts)
-    create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name, hmm_model_f,  archive_name)
+    create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name)
 
-def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name, hmm_model_f,  archive_name):
+def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name):
     #create tar archive
     pt2desc = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0) 
     t = tarfile.open("%s.tar.gz" % archive_name, "w:gz")
     t.add(pf2acc_f, arcname = "pf2acc_desc.txt")
     t.add(pt2desc_f, arcname = "pt2acc.txt")
-    config = [archive_name, hmm_name, hmm_model_f]
-    config_df = pd.DataFrame(config, index = ["archive_name", "hmm_name", "hmm_f"], columns = ["value"])
+    config = [archive_name]
+    config_names = ["archive_name"]
+    if hmm_name is not None:
+        config.append(hmm_name) 
+        config_names.append("hmm_name")
+    config_df = pd.DataFrame(config, index = config_names , columns = ["value"])
     config_s = StringIO.StringIO(config_df.to_csv(sep = "\t"))
     config_tarinfo = tarfile.TarInfo("config.txt")
     config_tarinfo.size = len(config_s.buf)
     t.addfile(config_tarinfo, config_s)
     for i in pt2desc.index:
         for j in mfs:
-            #t.add(os.path.join(models_dir, j % str(int(i)-1)), arcname = os.path.basename(os.path.join(models_dir, j % str(int(i)-1))))
             t.add(os.path.join(models_dir, j % i), arcname = os.path.basename(os.path.join(models_dir, j % i)))
     t.close()
          
