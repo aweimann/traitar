@@ -6,11 +6,11 @@ from StringIO import StringIO
 hmmer_colnames = ['target name','target accession','tlen','query name','accession','qlen','E-value','score_overall','bias_overall','#','of','c-Evalue','i-Evalue','score_domain','bias_domain','from_hmm','to_hmm','ali_from','ali_to','env_from','env_to','acc','description of target']
 
 def filter_dbcan(m):
-    return ((m.iloc[:,13] >= 25) & ((m.iloc[:,12] <= 0.001) & (m.loc[:,"ali_to"] - m.loc[:, "ali_from"] <= 80) | (m.iloc[:,12] <= 0.00001) & (m.loc[:,"ali_to"] - m.loc[:, "ali_from"] > 80))) 
+    return ((m.loc[:,"score_domain"] >= 25) & ((m.loc[:,"i-Evalue"] <= 0.001) & (m.loc[:,"ali_to"] - m.loc[:, "ali_from"] <= 80) | (m.loc[:,"i-Evalue"] <= 0.00001) & (m.loc[:,"ali_to"] - m.loc[:, "ali_from"] > 80))) 
 
 def filter_pfam(m):
     #TODO check thresholds
-    return (m.iloc[:,12] <= 0.01) & (m.iloc[:, 13] >= 25)
+    return (m.loc[:,"i-Evalue"] <= 0.01) & (m.loc[:,"score_domain"] >= 25)
 
 def apply_thresholds(infile_f, hmm_name, out_filt_f, out_excl_f):
     """parse HMMER output file and apply thresholds for e-valu and bit score)"""
