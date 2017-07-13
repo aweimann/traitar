@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 import sys
-from traitar.PhenotypeCollection import PhenotypeCollection
+from .PhenotypeCollection import PhenotypeCollection
 
 class evaluate:
     

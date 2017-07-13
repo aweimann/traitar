@@ -2,7 +2,7 @@ import pandas as pd
 import tarfile
 import os
 import StringIO
-import traitar.PhenotypeCollection
+from . import PhenotypeCollection
 import sys
 
 mfs = ["%s_bias.txt", "%s_feats.txt","%s_non-zero+weights.txt"]
@@ -52,15 +52,15 @@ def extend(archive_f, model_dir, pf2acc_desc_f, pts, pfam_v):
     #check if phenotype models not already exist
     #add phenotype models to the archive
 
-def new(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name):
+def new(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_standardized):
     """create new archive with phenotype models"""
     #read in pf and pt accessions 
     pts = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0)
     #check if models for all phenotypes exist
     validate(models_dir, pts)
-    create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name)
+    create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_standardized)
 
-def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name):
+def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_standardized):
     #create tar archive
     pt2desc = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0) 
     t = tarfile.open("%s.tar.gz" % archive_name, "w:gz")
@@ -71,12 +71,22 @@ def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name):
     if hmm_name is not None:
         config.append(hmm_name) 
         config_names.append("hmm_name")
+    if is_standardized:
+        config.append("True") 
+        config_names.append("is_standardized")
+    else:
+        config.append("False") 
+        config_names.append("is_standardized")
     config_df = pd.DataFrame(config, index = config_names , columns = ["value"])
     config_s = StringIO.StringIO(config_df.to_csv(sep = "\t"))
     config_tarinfo = tarfile.TarInfo("config.txt")
     config_tarinfo.size = len(config_s.buf)
     t.addfile(config_tarinfo, config_s)
     for i in pt2desc.index:
+        #check if standardization parameters are available and add to model archive
+        if is_standardized:
+            mfs.append("%s_mean.txt")
+            mfs.append("%s_scale.txt")
         for j in mfs:
             t.add(os.path.join(models_dir, j % i), arcname = os.path.basename(os.path.join(models_dir, j % i)))
     t.close()

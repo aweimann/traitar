@@ -1,27 +1,28 @@
 #!/usr/bin/env python
 import pandas as ps
 import os
-from traitar import modify
+from . import modify
 import subprocess
 import sys
 import shutil
-from traitar import get_external_data
-import traitar
-from traitar import hmm2gff
+from . import get_external_data
+from . import __file__ 
+from . import hmm2gff
 import json
 import os
 import sys
 import tarfile
-from traitar.PhenotypeCollection import PhenotypeCollection
-from traitar._version import __version__
+from .PhenotypeCollection import PhenotypeCollection
+from ._version import __version__
 import re
-import traitar.evaluation
-primary_default_models = "%(phenolyzer)s/data/models/phypat.tar.gz" %{"phenolyzer" : os.path.abspath(os.path.dirname(traitar.__file__))}
-secondary_default_models = "%(phenolyzer)s/data/models/phypat+PGL.tar.gz" %{"phenolyzer" : os.path.abspath(os.path.dirname(traitar.__file__))}
+from . import evaluation
+env = os.environ.copy()
+primary_default_models = "%(phenolyzer)s/data/models/phypat.tar.gz" %{"phenolyzer" : os.path.abspath(os.path.dirname(__file__))}
+secondary_default_models = "%(phenolyzer)s/data/models/phypat+PGL.tar.gz" %{"phenolyzer" : os.path.abspath(os.path.dirname(__file__))}
 
 def annotate(args):
     """annotate input"""
-    p = Traitar(args.input_dir, args.output_dir, args.sample2file, args.cpus, gene_gff_type=args.gene_gff_type)
+    p = Traitar(args.input_dir, args.output_dir, args.sample2file, args.cpus, gene_gff_type=args.gene_gff_type, primary_models = args.primary_models, secondary_models = args.secondary_models, primary_hmm_db = args.primary_hmm_db, secondary_hmm_db = args.secondary_hmm_db, annotation_summary = args.annotation_summary)
     p.annotate(args.mode)
 
 def evaluate(args):
@@ -29,15 +30,19 @@ def evaluate(args):
 
 def phenolyze(args):
     """annotate and then run phenotyping"""
-    p = Traitar(args.input_dir, args.output_dir, args.sample2file, args.cpus, args.rearrange_heatmap, args.heatmap_format, args.no_heatmap_phenotype_clustering, args.no_heatmap_sample_clustering, args.gene_gff_type, args.primary_models, args.secondary_models)
+    p = Traitar(args.input_dir, args.output_dir, args.sample2file, args.cpus, args.rearrange_heatmap, args.heatmap_format, args.no_heatmap_phenotype_clustering, args.no_heatmap_sample_clustering, args.gene_gff_type, args.primary_models, args.secondary_models, args.primary_hmm_db, args.secondary_hmm_db, args.annotation_summary)
     #check if user wants to supply pre-computed annotation summary
     if not args.mode == "from_annotation_summary":
         p.annotate(args.mode)
+    else:
+        if not "annotation_summary" in args:
+            sys.stderr.write("Provide an annotation file with -a / --annotation_summary along with from_annotation_summary")
+            sys.exit(1)
     p.phenolyze(args.mode)
 
 def new(args):
     """create new phenotype model archive"""
-    modify.new(args.models_dir, args.pf_acc2desc, args.pt_id2acc_desc, args.hmm_name, args.archive_name)
+    modify.new(args.models_dir, args.pf_acc2desc, args.pt_id2acc_desc, args.hmm_name, args.archive_name, args.is_standardized)
 
 def show(args):
     """show features for the given phenotype"""
@@ -59,7 +64,7 @@ def extend(args):
 
 class Traitar:
 
-    def __init__(self, input_dir, output_dir, sample2file, cpu = 1, heatmap_out = None, heatmap_format = "pdf", no_heatmap_phenotype_clustering = False, no_heatmap_sample_clustering = False ,gene_gff_type = None, primary_models = None, secondary_models = None):
+    def __init__(self, input_dir, output_dir, sample2file, cpu = 1, heatmap_out = None, heatmap_format = "pdf", no_heatmap_phenotype_clustering = False, no_heatmap_sample_clustering = False ,gene_gff_type = None, primary_models = None, secondary_models = None, primary_hmm_db = None, secondary_hmm_db = None, annotation_summary = None):
         self.user_message = "output dir %s already exists; press 1 to continue with data from a previous run; press 2 to remove this directory; press 3 to abort followed by [ENTER]"
         self.error_message =  "directory %s already exists; delete directory or run in interactive mode if this step is done and you want to continue from there"
         self.heatmap_format = heatmap_format 
@@ -71,22 +76,25 @@ class Traitar:
         self.s2f = self.parse_sample_f()
         self.cpu = cpu
         self.output_dir = output_dir
-        self.phenolyzer_dir = os.path.abspath(os.path.dirname(traitar.__file__)) 
-        #determines whether the primary and secondary phenotype models specify the same set of phenotypes and can be combined in one heatmap
-        #initially set to false
-        #self.are_models_compatible = False
+        self.phenolyzer_dir = os.path.abspath(os.path.dirname(__file__)) 
+        self.annotation_summary = annotation_summary
+        #set primary models either to user specified model or to default phypat model
         if primary_models is not None:
             self.primary_models = PhenotypeCollection(primary_models)
+            self.primary_models.hmm_f = primary_hmm_db
         else:
             self.primary_models = PhenotypeCollection(primary_default_models)
+        #set secondary models either to user specified model or to default phypat model
         if secondary_models is not None and primary_models is not None:
             self.secondary_models = PhenotypeCollection(secondary_models)
+            self.secondary_models.hmm_f = secondary_hmm_db
         elif self.primary_models.get_name() != "phypat":
             self.secondary_models = None
         else:
             self.secondary_models = PhenotypeCollection(secondary_default_models)
         self.is_gnu_parallel_available = self.is_exe("parallel")
         self.heatmap_out = heatmap_out
+        #check if GNU parallel is available when running with more than one cpu
         if cpu != 1 and not self.is_gnu_parallel_available:
             sys.stderr.write("GNU parallel is not available on the command line; make sure you installed it properly or decrease number of cpus to 1\n")
             sys.exit(1)
@@ -97,8 +105,6 @@ class Traitar:
             #check if Pfam hmm specified in config.json exists
         with open(os.path.join(self.phenolyzer_dir, "config.json" ), "r") as cf:
             self.config = json.load(cf)
-        #if not os.path.isfile(self.config["pfam_hmms"]):
-        #    sys.stderr.write("Pfam HMM file does not exist (%s), make sure you have run traitar config --local <Pfam hmm>" % self.config["pfam_hmms"])
         #create output dir
         self.check_dir(output_dir)
         #pred dir
@@ -218,10 +224,11 @@ class Traitar:
         if is_recompute:
             self.run_phenotype_prediction()
         print "running feature track generation"
-        if not "gene_gff" in self.s2f.columns:
-            self.run_feature_track_generation(self.s2f.loc[:,"sample_name"], mode)
-        else:
-            self.run_feature_track_generation(self.s2f.loc[:, "sample_name"],  mode, self.s2f.loc[: , "gene_gff"], self.gene_gff_type)
+        if not mode == "from_annotation_summary":
+            if not "gene_gff" in self.s2f.columns:
+                self.run_feature_track_generation(self.s2f.loc[:,"sample_name"], mode)
+            else:
+                self.run_feature_track_generation(self.s2f.loc[:, "sample_name"],  mode, self.s2f.loc[: , "gene_gff"], self.gene_gff_type)
         sys.stdout.flush()
         print "running heatmap generation"
         self.run_heatmap_generation(self.s2f.loc[:,"sample_name"])
@@ -255,11 +262,15 @@ class Traitar:
             self.execute_commands(prodigal_commands, os.path.join(gp_dir, "joblog.txt"))
 
     def run_hmmer_annotation(self, in_samples, out_samples, mode):
-        file_extension = False
-        in_dir = self.input_dir
+        param_dict = {
+                "out_dir" : self.output_dir, 
+                "phenolyzer_dir" : self.phenolyzer_dir}
         if mode == "from_nucleotides":
-            file_extension = True 
+            param_dict["file_extension"] = ".faa" 
             in_dir = os.path.join(self.output_dir, "gene_prediction")
+        else:
+            param_dict["file_extension"] = "" 
+            in_dir = self.input_dir
         #create output directory for the pfam annotation 
         a_dir_base = os.path.join(self.output_dir, "annotation")
         #check if output directory already exists and trigger user input if in interactive mode
@@ -267,66 +278,43 @@ class Traitar:
         #run hmmer annotation
 
         hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
-        filter_and_aggregate = "hmmer2filtered_best.py %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
+        filter_and_aggregate = "hmmer2filtered_best %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
 
         if self.secondary_models is not None and self.primary_models.get_hmm_name() != self.secondary_models.get_hmm_name():
             models = [self.primary_models, self.secondary_models]
         else:
             models = [self.primary_models]
-
-        if is_recompute:
-            for pt_models in models: 
-                a_dir = os.path.join(a_dir_base, pt_models.get_hmm_name())
-                os.mkdir(a_dir)
-                hmmer_commands = []
-                for i in range(len(in_samples)):
-                    hmmer_commands.append(hmmer % {"file_extension": ".faa" if file_extension else "", "in_sample":in_samples[i], "out_sample":out_samples[i], "a_dir":a_dir, "phenolyzer":self.phenolyzer_dir, "in_dir" : in_dir, "hmms" : os.path.join(self.config['hmms'], pt_models.get_hmm_f())})
-                #run filtering and best domain hit aggregation
-                fae_commands = []
-                for i in range(len(in_samples)):
-                    fae_commands.append(filter_and_aggregate % {"a_dir":a_dir, "in_sample":in_samples[i], "out_sample":out_samples[i], "phenolyzer":self.phenolyzer_dir, "hmm_name" : pt_models.get_hmm_name()})
-                #run summary matrix computation
-                domtblout2gene_generic = "domtblout2gene_generic.py %(a_dir)s/summary.dat  <(ls %(a_dir)s/*_filtered_best.dat) %(archive_f)s"%{"a_dir": a_dir, "phenolyzer":self.phenolyzer_dir, "archive_f" : pt_models.get_archive_f()}
-                if is_recompute:
-                    self.execute_commands(hmmer_commands, joblog = os.path.join(a_dir, "joblog_hmmer.txt"))
-                    self.execute_commands(fae_commands, joblog = os.path.join(a_dir, "joblog_filter_and_aggregate.txt"))
-                    self.execute_commands([domtblout2gene_generic], joblog = os.path.join(a_dir, "joblog_generate_annotation_matrix.txt"))
-        else:
-            print "Checking if the annotation is complete"
-            for pt_models in models:
-                a_dir = os.path.join(a_dir_base, pt_models.get_hmm_name())
-                hmmer_commands = []
-                fae_commands = []
-                for i in range(len(out_samples)):
-                    # TODO: automatically get pfam
-                    fname_hmm = os.path.join(a_dir, out_samples[i] + "_domtblout.dat")
-                    fname_filtered = os.path.join(a_dir, out_samples[i] + "_filtered_best.dat")
-                    # check which annotation files are missing
-                    if not os.path.isfile(fname_hmm):
+        for pt_models in models: 
+            a_dir = os.path.join(a_dir_base, pt_models.get_hmm_name())
+            param_dict["a_dir"] = a_dir
+            param_dict["hmms"] =  pt_models.get_hmm_f()
+            param_dict["hmm_name"] =  pt_models.get_hmm_name()
+            param_dict["archive_f"] =  pt_models.get_archive_f()
+            os.mkdir(a_dir)
+            hmmer_commands = []
+            fae_commands = []
+            for i in range(len(in_samples)):
+                fname_hmm = os.path.join(a_dir, out_samples[i] + "_domtblout.dat")
+                fname_filtered = os.path.join(a_dir, out_samples[i] + "_filtered_best.dat")
+                param_dict["in_sample"] = in_samples[i]
+                param_dict["out_sample"] = out_samples[i]
+                if not os.path.isfile(fname_hmm):
+                    hmmer_commands.append(hmmer % param_dict) 
+                    if is_recompute:
                         print "hmmer output %s is missing; recomputing ..." %fname_hmm  
-                        # add the command to the list of commands to execute
-                        print self.config
-                        hmmer_commands.append(
-                            hmmer % {"file_extension": ".faa" if file_extension else "", "in_sample": in_samples[i],
-                                     "out_sample": out_samples[i], "a_dir": a_dir, "phenolyzer": self.phenolyzer_dir,
-                                     "in_dir": in_dir, "hmms": os.path.join(self.config['hmms'], pt_models.get_hmm_f())})
-                    # check which filtered file is missing
-                    if not os.path.isfile(fname_filtered):
+                #run filtering and best domain hit aggregation
+                if not os.path.isfile(fname_filtered):
+                    if is_recompute:
                         print "filtered hmmer output %s is missing; recomputing ..." %fname_filtered
-                        fae_commands.append(filter_and_aggregate % {"a_dir": a_dir, "in_sample": in_samples[i],
-                                                                    "out_sample": out_samples[i],
-                                                                    "phenolyzer": self.phenolyzer_dir,
-                                                                    "hmm_name": pt_models.get_hmm_name()})
-                # recompute the missing files
-                self.execute_commands(hmmer_commands, joblog = os.path.join(a_dir, "joblog_hmmer_recompute.txt"))
-                self.execute_commands(fae_commands, joblog = os.path.join(a_dir, "joblog_filter_and_aggregate_recompute.txt"))
-
-                # check if the summary.dat file was generated, if not recompute
-                if not os.path.exists(os.path.join(a_dir, "summary.dat")):
+                    fae_commands.append(filter_and_aggregate % param_dict)
+            self.execute_commands(hmmer_commands, joblog = os.path.join(a_dir, "joblog_hmmer.txt"))
+            self.execute_commands(fae_commands, joblog = os.path.join(a_dir, "joblog_filter_and_aggregate.txt"))
+            if not os.path.exists(os.path.join(a_dir, "summary.dat")):
+                if is_recompute:
                     print "annotation summary matrix is missing; recomputing ..." 
-                    domtblout2gene_generic = "domtblout2gene_generic.py %(a_dir)s/summary.dat  <(ls %(a_dir)s/*_filtered_best.dat) %(archive_f)s" % {
-                        "a_dir": a_dir, "phenolyzer": self.phenolyzer_dir, "archive_f": pt_models.get_archive_f()}
-                    self.execute_commands([domtblout2gene_generic])
+                #run summary matrix computation
+                domtblout2gene_generic = "domtblout2gene_generic %(a_dir)s/summary.dat  <(ls %(a_dir)s/*_filtered_best.dat) %(archive_f)s" % param_dict
+                self.execute_commands([domtblout2gene_generic], joblog = os.path.join(a_dir, "joblog_generate_annotation_matrix.txt"))
 
 
     def run_phenotype_prediction(self):
@@ -334,14 +322,30 @@ class Traitar:
         if not os.path.exists(self.phypat_dir):
             os.mkdir(self.phypat_dir)
         #run phenotype prediction for primary and secondary models 
-        predict_phypat = "predict.py %(primary_models)s %(pred_dir)s  %(out_dir)s/annotation/%(hmm_f)s/summary.dat -k 5  " % {"out_dir" : self.output_dir, "pred_dir" : self.phypat_dir, "primary_models" : self.primary_models.get_archive_f(), "hmm_f" : self.primary_models.get_hmm_name()} 
+        param_dict = {
+                "out_dir" : self.output_dir, 
+                "pred_dir" : self.phypat_dir, 
+                "primary_models" : self.primary_models.get_archive_f(), 
+                "hmm_f" : self.primary_models.get_hmm_name(),
+                "phenolyzer_dir" : self.phenolyzer_dir}
+        if self.annotation_summary is None:
+            param_dict["annotation_summary"] = "%(out_dir)s/annotation/%(hmm_f)s/summary.dat" % param_dict
+        else: 
+            param_dict["annotation_summary"] = self.annotation_summary 
+        predict_phypat = "predict %(primary_models)s %(pred_dir)s  %(annotation_summary)s  -k 5" % param_dict 
+        #check if secondary models are available
         if not self.secondary_models is None:
             if not os.path.exists(self.phypat_pgl_dir):
                 os.mkdir(self.phypat_pgl_dir)
-            predict_phypat_pgl = "predict.py %(secondary_models)s %(pred_dir)s %(out_dir)s/annotation/%(hmm_f)s/summary.dat -k 5  " % {"out_dir" : self.output_dir, "pred_dir" : self.phypat_pgl_dir, "secondary_models" : self.secondary_models.get_archive_f(), "hmm_f" : self.secondary_models.get_hmm_name()} 
-            print predict_phypat_pgl
-        #combine phypat and phypat+PGL predictions
-            merge_preds = "merge_preds.py %(out_dir)s %(phypat_dir)s %(phypat_pgl_dir)s %(primary_name)s %(secondary_name)s -k 5" %{"out_dir" : os.path.join(self.output_dir, "phenotype_prediction"), "phypat_dir" : self.phypat_dir, "phypat_pgl_dir" : self.phypat_pgl_dir, "phenolyzer" : self.phenolyzer_dir, "primary_name" : self.primary_models.get_name(), "secondary_name" : self.secondary_models.get_name() } 
+            param_dict["secondary_models"] = self.secondary_models.get_archive_f()
+            param_dict["pred_dir"] = self.phypat_pgl_dir
+            predict_phypat_pgl = "predict %(secondary_models)s %(pred_dir)s %(annotation_summary)s -k 5" % param_dict 
+            param_dict["primary_name"] = self.primary_models.get_name()
+            param_dict["secondary_name"] = self.secondary_models.get_name()
+            param_dict["phypat_dir"] = self.phypat_dir
+            param_dict["phypat_pgl_dir"] = self.phypat_pgl_dir 
+            #combine phypat and phypat+PGL predictions
+            merge_preds = "merge_preds %(out_dir)s %(phypat_dir)s %(phypat_pgl_dir)s %(primary_name)s %(secondary_name)s -k 5" % param_dict
             self.execute_commands([predict_phypat, predict_phypat_pgl])
             self.execute_commands([merge_preds])
         else:
@@ -351,13 +355,17 @@ class Traitar:
         """map the phenotype relevant protein families and write mapping to disk"""
         #create output directory for the pfam annotation 
         #hmm2gff command for the full pfam annotation
-        hmm2gff = "hmm2gff.py %(out_dir)s/annotation/%(hmm_name)s/%(sample)s_filtered_best.dat  %(out_gff_dir)s %(sample)s  %(model_tar)s %(predicted_pts)s " 
+        hmm2gff = "hmm2gff %(out_dir)s/annotation/%(hmm_name)s/%(sample)s_filtered_best.dat  %(out_gff_dir)s %(sample)s  %(model_tar)s %(predicted_pts)s " 
         gene_gff_extd = "--gene_gff %(gene_gff)s --gene_gff_type " + gene_gff_type 
         #read in phypat predictions
         phypat_preds = ps.read_csv(os.path.join(self.phypat_dir, "predictions_majority-vote.txt"), index_col = 0, sep = "\t", encoding = "utf-8")
         phypat_preds.index = phypat_preds.index.values.astype('string')
         #read pfam phenotype id mapping file from model tar
         pt2desc_phypat = self.primary_models.get_acc2pt()
+        param_dict = {
+                "out_dir" : self.output_dir, 
+                "pred_dir" : self.phypat_dir, 
+                "phenolyzer" : self.phenolyzer_dir}
         #secondary models
         if not self.secondary_models is None:
             phypat_pgl_preds = ps.read_csv(os.path.join(self.phypat_pgl_dir, "predictions_majority-vote.txt"), index_col = 0, sep = "\t", encoding = "utf-8") 
@@ -366,6 +374,10 @@ class Traitar:
         #collect predictions and compose hmm2gff command for each samples
         h2gff_commands = []
         for i in range(len(in_samples)):
+            param_dict["sample"] = in_samples[i]
+            param_dict["model_tar"] = self.primary_models.get_archive_f()
+            param_dict["out_gff_dir"] = "%s/feat_gffs/" % self.phypat_dir
+            param_dict["hmm_name"] = self.primary_models.get_hmm_name() 
             predicted_pts_phypat = []
             predicted_pts_phypat_pgl = []
             for j in phypat_preds.columns:
@@ -376,20 +388,26 @@ class Traitar:
                     if not self.secondary_models is None and phypat_pgl_preds.loc[in_samples[i], j] == 1:
                         predicted_pts_phypat_pgl.append(str(pt2desc_phypat_pgl.loc[j,][0]))
             if not len(predicted_pts_phypat) == 0:
-                cmd = hmm2gff % {"out_gff_dir" : "%s/feat_gffs/" % self.phypat_dir, "out_dir" : self.output_dir, "phenolyzer" : self.phenolyzer_dir, "sample" : in_samples[i], "model_tar" :  self.primary_models.get_archive_f(), "predicted_pts": ",".join(predicted_pts_phypat), "hmm_name" : self.primary_models.get_hmm_name()}
+                param_dict["predicted_pts"] =  ",".join(predicted_pts_phypat)
+                cmd = hmm2gff % param_dict 
                 if gene_gffs is not None:
                     cmd += gene_gff_extd % {"gene_gff" : ("%s/gene_prediction/%s.gff" % (self.output_dir, in_samples[i])) if gene_gffs is None else os.path.join(self.input_dir, gene_gffs[i])}
                 h2gff_commands.append(cmd)
             if not len(predicted_pts_phypat_pgl) == 0:
+                param_dict["model_tar"] = self.secondary_models.get_archive_f()
+                param_dict["out_gff_dir"] = "%s/feat_gffs/" % self.phypat_pgl_dir
+                param_dict["predicted_pts"] = ",".join(predicted_pts_phypat_pgl)
+                param_dict["hmm_name"] = self.secondary_models.get_hmm_name() 
                 if not self.secondary_models is None:
-                    cmd = hmm2gff % {"out_gff_dir" : "%s/feat_gffs/" % self.phypat_pgl_dir, "out_dir" : self.output_dir, "phenolyzer" : self.phenolyzer_dir, "sample" : in_samples[i], "model_tar" :  self.secondary_models.get_archive_f(), "predicted_pts": ",".join(predicted_pts_phypat), "hmm_name" : self.secondary_models.get_hmm_name()}
+                    cmd = hmm2gff % param_dict 
                     if gene_gffs is not None:
                         cmd += gene_gff_extd % {"gene_gff" : ("%s/gene_prediction/%s.gff" % (self.output_dir, in_samples[i])) if gene_gffs is None else os.path.join(self.input_dir, gene_gffs[i])}
                     h2gff_commands.append(cmd)
         #create output dirs for feature tracks
         is_recompute = self.check_dir(os.path.join(self.phypat_dir, "feat_gffs"))
         if is_recompute:
-            os.mkdir(os.path.join(self.phypat_pgl_dir, "feat_gffs"))
+            if not self.secondary_models is None:
+                os.mkdir(os.path.join(self.phypat_pgl_dir, "feat_gffs"))
             self.execute_commands(h2gff_commands) 
         if mode != "from_nucleotides" and gene_gffs is None:
             ftco = os.path.join(self.pred_dir, "feature_track_commands.txt")
@@ -402,7 +420,7 @@ class Traitar:
         #TODO introduce nans via the merge prediction routine; mark the nans in the heatmap with a different color
         if self.heatmap_out is None:
             self.heatmap_out = self.pred_dir
-        hm_cmd = "heatmap.py %(pred_dir)s/%(pred_f)s %(out)s/heatmap_%(predictor)s.%(heatmap_format)s %(secondary_models)s --sample_f %(sample_file)s %(model_archive)s %(phenolyzer)s/data/colors.txt %(phenotype_clustering)s %(sample_clustering)s"
+        hm_cmd = "heatmap %(pred_dir)s/%(pred_f)s %(out)s/heatmap_%(predictor)s.%(heatmap_format)s %(secondary_models)s --sample_f %(sample_file)s %(model_archive)s %(phenolyzer)s/data/colors.txt %(phenotype_clustering)s %(sample_clustering)s"
         hm_dict = {"phenolyzer" : self.phenolyzer_dir,  "out": self.heatmap_out, "sample_file" : self.sample2file  , "heatmap_format" : self.heatmap_format, "phenotype_clustering" : "--column_method None" if self.no_heatmap_phenotype_clustering else "", "sample_clustering" : "--row_method None" if self.no_heatmap_sample_clustering else "" }
         hm_dict_phypat = {"pred_dir" : self.phypat_dir, "pred_f" : "predictions_majority-vote.txt","predictor": self.primary_models.get_name(),  "model_archive" : self.primary_models.get_archive_f(), "secondary_models" : ""}
         cmds = []
@@ -416,77 +434,3 @@ class Traitar:
                 i.update(hm_dict)
                 cmds.append(hm_cmd % i)
         self.execute_commands(cmds)
-
-if __name__ == "__main__":
-    #add phenolyzer dir to the path
-    env = os.environ.copy()
-    import argparse
-    class MyParser(argparse.ArgumentParser):
-        def error(self, message):
-            sys.stderr.write('error: %s\n' % message)
-            self.print_help()
-            sys.exit(2)
-    #parser = MyParser("run traitar (try: traitar {phenotype, pfam, show, etc.} -h for help on the sub programs)")
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--version", action = 'version', version = __version__)
-    #define parent parser to avoid defining options twice
-    parent_p = argparse.ArgumentParser(add_help=False)
-    parent_p.add_argument("input_dir", help='directory with the input data')
-    parent_p.add_argument("sample2file", help='mapping from samples to fasta files (also see gitHub help):\n sample1_file_name{tab}sample1_name\nsample2_file_name{tab}sample2_name')
-    parent_p.add_argument("mode", help='either from_genes if gene prediction amino acid fasta is available in input_dir otherwise from_nucleotides in this case Prodigal is used to determine the ORFs from the nucleotide fasta files in input_dir', choices=["from_genes", "from_nucleotides", "from_annotation_summary"])
-    parent_p.add_argument("output_dir", help='directory for the output; will be created if it doesn\'t exist yet', default='phenolyzer_output')
-
-    parent_p.add_argument("-g", "--gene_gff_type", help='if the input is amino acids the type of gene prediction GFF file can be specified for mapping the phenotype predictions to the genes', default = None, choices = ["genbank", "refseq", "img", "prodigal", "metagenemark"])
-    parent_p.add_argument("-c", "--cpus", help='number of cpus used for the individual steps; maximum is number of samples; needs parallel', default = 1)
-    #define subparser for phenotype, pfam and annotate
-    subparsers = parser.add_subparsers()
-    main_p = subparsers.add_parser("phenotype", parents=[parent_p], help = "run annotation and prediction")
-    main_p.add_argument("-p", "--primary_models", help='primary phenotype models archive')
-    main_p.add_argument("-s", "--secondary_models", help='secondary phenotype models archive')
-    main_p.add_argument("-r", "--rearrange_heatmap", help='recompute the phenotype heatmaps based on a subset of previously annotated and phenotyped samples', default = None)
-    main_p.add_argument("--no_heatmap_sample_clustering", action = 'store_true', help = "if option is set, don't cluster the phenotype heatmaps by samples and keep input ordering" )
-    main_p.add_argument("--no_heatmap_phenotype_clustering", action = 'store_true', help = "if option is set, don't cluster the heatmaps by phenotype and keep input ordering")
-    main_p.add_argument("-f", "--heatmap_format", choices = ["png", "pdf", "svg", "jpg", "eps"], default='pdf', help = "choose file format for the heatmap") 
-    main_p.set_defaults(func = phenolyze)
-    data_p = subparsers.add_parser("pfam", help = "download or set Pfam HMMs") 
-    ann_p = subparsers.add_parser("annotate", parents=[parent_p], help = "run annotation")
-    ann_p.set_defaults(func = annotate)
-    show_p = subparsers.add_parser("show", help = "show features important for classification") 
-    show_p.add_argument("phenotype", help = "phenotype under investigation")
-    show_p.add_argument("--predictor", help = "pick phypat or phypat+PGL classifier", choices = ["phypat", "phypat+PGL"], default = "phypat")
-    show_p.add_argument("--strategy", choices = ["non-zero", "majority"], default = "majority")
-    show_p.add_argument("-i", "--include_negative", action = 'store_true')
-    show_p.add_argument("-p", "--models_f", help='phenotype models archive; if set, look for the target in the phenotype in the given phenotype collection')
-    show_p.set_defaults(func = show)
-    #extend_p = subparsers.add_parser("extend", help = "extend existing phenotype models") 
-    #extend_p.add_argument("new_models_dir", help='directory with phenotype models to be included')
-    #extend_p.add_argument("model_archive", help='phenotype model archive')
-    #extend_p.add_argument("pt2acc", help='phenotype ids to accession mapping')
-    #extend_p.set_defaults(func = extend)
-    new_p = subparsers.add_parser("new", help = "create a new phenotype model archive") 
-    new_p.add_argument("models_dir", help='directory with phenotype models to be included')
-    new_p.add_argument("pf_acc2desc", help='a mapping between Pfam families and phenotype ids to accessions')
-    new_p.add_argument("pt_id2acc_desc", help='a mapping between phenotype ids and descriptions')
-    new_p.add_argument("--hmm_name", help='hmm database used', choices = ["dbcan", "pfam"], default = None)
-    new_p.add_argument("archive_name", help='name of the model, which is created')
-    remove_p = subparsers.add_parser("remove", help = "remove phenotypes from a given phenotype archive") 
-    remove_p.add_argument("archive_f", help = 'phenotype model archive file, which shall be modified')
-    remove_p.add_argument("phenotypes", help = 'phenotypes to be removed')
-    remove_p.add_argument("out_f", help = 'out file for the modified phenotype tar archive')
-    remove_p.add_argument("--keep", action = 'store_true', help = 'instead of remove the given phenotypes, keep them and forget the rest')
-    remove_p.set_defaults(func = remove)
-    new_p.set_defaults(func = new)
-    eval_p = subparsers.add_parser("evaluate", help = "compare Traitar predictions against a given standard of truth") 
-    eval_p.add_argument("traitar_pred_f",  help = "phenotype prediction matrix as return by Traitar")
-    eval_p.add_argument("gold_standard_f",  help = "phenotype matrix with standard of truth")
-    eval_p.add_argument("--are_pt_ids",  help = "set if the gold standard phenotype are index via phenotype ids rather than accessions", action = 'store_true')
-    eval_p.add_argument("--phenotype_archive",  help = "need if gold standard uses an accession index for mapping")
-    eval_p.add_argument("--min_samples", "-m", help='minimum number of positive and negative samples to consider phenotypes for calculation of the macro accuracy', default = 5)
-    eval_p.add_argument("out",  help = "output directory")
-    eval_p.set_defaults(func = evaluate)
-    data_p.add_argument("download",  help = "download Pfam HMMs into the given download directory and untar and unzip it")
-    data_p.add_argument("--local", "-l", action = 'store_true', help = "the Pfam HMMs are in the above directory with name 'Pfam-A.hmm'")
-    data_p.set_defaults(func = get_external_data.download)
-    args = parser.parse_args()
-    args.func(args)
-

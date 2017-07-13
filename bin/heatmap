@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+from traitar.PhenotypeCollection import PhenotypeCollection
+from traitar.heatmap import heatmap 
+import pandas as pd
+
+if __name__ == '__main__':
+    
+    ################  Default Methods ################
+    
+    """ Running with cosine or other distance metrics can often produce negative Z scores
+        during clustering, so adjustments to the clustering may be required.
+        
+    see: http://docs.scipy.org/doc/scipy/reference/cluster.hierarchy.html
+    see: http://docs.scipy.org/doc/scipy/reference/spatial.distance.htm  
+    color_gradient = red_white_blue|red_black_sky|red_black_blue|red_black_green|yellow_black_blue|green_white_purple'
+    """
+    ################  Comand-line arguments ################
+    row_method = 'average'
+    column_method = 'single'
+    row_metric = 'cityblock' #cosine
+    column_metric = 'euclidean'
+    #color_gradient = 'red_white_blue'
+    import argparse
+    parser = argparse.ArgumentParser("generate a heatmap with dendrograms from the phenotype predictions")
+    parser.add_argument("data_f", help= 'tab delimited file with row and column names')
+    parser.add_argument("out_f", help= 'output image (png) file name')
+    parser.add_argument("model_tar", help= 'phenotype model archive')
+    parser.add_argument("color_f", help= 'file with r g b colors to be used')
+    parser.add_argument("--secondary_model_tar", help= 'secondary model tar if combining the prediction of two different phenotype collections into one heatmap')
+    parser.add_argument("--row_method", help= 'method to use for the row dendrogram', default = 'average')
+    parser.add_argument("--column_method", help= 'method to use for the column dendrogram', default = 'single')
+    parser.add_argument("--row_metric", help= 'metric to use for the row dendrogram', default = 'cityblock')
+    parser.add_argument("--column_metric", help= 'metric to use for the column dendrogram', default = 'cityblock')
+    parser.add_argument("--sample_f", help= 'restrict phenotype predictions to the sample found in <sample_file>', default = None)
+    args = parser.parse_args()
+    primary_pt_models = PhenotypeCollection(args.model_tar)
+    if not args.secondary_model_tar is None:
+        secondary_pt_models = PhenotypeCollection(args.secondary_model_tar)
+    else:
+        secondary_pt_models = None
+    m = pd.read_csv(args.data_f, sep = "\t", index_col = 0, encoding='utf-8')
+    m.index = m.index.values.astype('string')
+    if not args.sample_f is None:
+        s2f = pd.read_csv(args.sample_f, dtype = 'string', sep = "\t")
+        m = m.loc[s2f.loc[:, "sample_name"], :]
+    matrix = m.values
+    column_header = m.columns 
+    row_header = m.index
+    if args.column_method == "None":
+        args.column_method = None
+    if args.row_method == "None":
+        args.row_method = None
+    try:
+        heatmap(matrix, row_header, column_header, primary_pt_models, args.color_f, args.row_method, args.column_method, args.row_metric, args.column_metric, args.mode, args.out_f, args.sample_f, secondary_pt_models)
+    except Exception:
+        print 'Error using %s ... trying euclidean instead' % row_metric
+        args.row_metric = 'euclidean'
+        try:
+            heatmap(matrix, row_header, column_header, primary_pt_models, args.color_f, args.row_method, args.column_method, args.row_metric, args.column_metric,   args.out_f, args.sample_f, secondary_pt_models)
+        except IOError:
+            print 'Error with clustering encountered'

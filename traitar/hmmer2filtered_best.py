@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """parse hmmer output file and generated filtered best file"""
 import sys
 import pandas as ps
@@ -62,16 +61,3 @@ def aggregate_domain_hits(filtered_df, out_f):
                     current_max = filtered_df.iloc[i,]
         #write last domain hit to disk
         ps.DataFrame(current_max).T.to_csv(out_f, sep = "\t", index = False, header = False, mode = 'a')
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser("parse hmmer output file and generated filtered best file")
-    parser.add_argument("infile_f", help='a space-delimited output file from hmmer', default = sys.stdin, type = file)
-    parser.add_argument("out_best_f", help='hmmer tab delimited file with hits removed according to the thresholds and only best domain hit retained')
-    parser.add_argument("hmm_name", choices = ["pfam", "dbcan"], help ='name of the HMM database; this will determine the filtering applied')
-    parser.add_argument("--out_excl_f", help='domain hits filtered due to the applied thresholds')
-    parser.add_argument("--out_filt_f", help='hmmer tab delimited file with hits removed according to the thresholds')
-    #parser.add_argument("aln_cov_thresh", help = 'threshold for the alignment length coverage', type = int)
-    args = parser.parse_args()
-    filtered_df = apply_thresholds(args.infile_f, args.hmm_name, args.out_filt_f, args.out_excl_f) 
-    aggregate_domain_hits(filtered_df, args.out_best_f)

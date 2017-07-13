@@ -1,0 +1,20 @@
+#! /usr/bin/env python
+from traitar.traitar_from_archive import read_archive
+from traitar.traitar_from_archive import call_traitar 
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser("Traitar wrapper")
+    parser.add_argument("input_archive", help='directory with the input data')
+    parser.add_argument("archive_type", help='specify kind of archive', choices = ["tar.gz", "zip"])
+    parser.add_argument("mode", help='either from_genes if gene prediction amino acid fasta is available in input_dir otherwise from_nucleotides in this case Prodigal is used to determine the ORFs from the nucleotide fasta files in input_dir', choices=["from_genes", "from_nucleotides", "from_annotation_summary"])
+    parser.add_argument("out_archive", help='compressed traitar output foldder')
+    parser.add_argument("-c", "--cpus", help='number of cpus used for the individual steps; maximum is number of samples; needs parallel', default = 1)
+    parser.add_argument("--sample2cat",  help='a table giving an environment for each sample')
+    parser.add_argument("--input_dir", help='directory for the traitar input; will be created if it doesn\'t exist yet', default='traitar_in')
+    parser.add_argument("--output_dir", help='directory for the traitar output; will be created if it doesn\'t exist yet', default='traitar_out')
+    parser.add_argument("--heatmap_format", choices = ["png", "pdf", "svg", "jpg"], default='pdf', help = "choose file format for the heatmap") 
+    args = parser.parse_args()
+    read_archive(args.input_archive, args.archive_type, args.mode, args.sample2cat, args.input_dir)
+    call_traitar(args)
+
