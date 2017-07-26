@@ -10,7 +10,8 @@ class evaluate:
         """compare traitar predictions with a given gold standard"""
         #read in gold standard
         gs = pd.read_csv(gold_standard_f, index_col = 0, sep = "\t", na_values = "?", encoding = "utf-8" )
-        #gs.replace(["-", "+"], [0, 1], inplace = True)
+        gs.replace(["-", "+"], [0, 1], inplace = True)
+        gs.replace(["ND"], [pd.np.nan], inplace = True)
         #check if gold_standard uses phenotype ids and replace with accessions in that case
         if are_pt_ids: 
             #read in phenotype mapping
@@ -51,7 +52,6 @@ class evaluate:
         perf_per_pt.columns = ["recall pos", "recall neg", "macro accuracy", "precision"]
         for pt in pts:
             not_null = gs.loc[~pd.isnull(gs.loc[:, pt]),].index
-            print not_null
             conf_per_pt.loc[pt, ] = evaluate.confusion_m(gs.loc[not_null, pt], tp.loc[not_null, pt])
             perf_per_pt.loc[pt, ] = evaluate.get_performance(conf_per_pt.loc[pt, ]) 
             miscl = evaluate.get_miscl(gs.loc[:, pt], tp.loc[:, pt])
