@@ -11,10 +11,12 @@ class PhenotypeCollection:
         info_df = pd.read_csv(info, sep = "\t", index_col = 0)
         self.name = info_df.loc["archive_name", "value"]
         self.hmm_name = info_df.loc["hmm_name", "value"]
+        if "hmm_f" in info_df.index:
+            self.hmm_f = info_df.loc["hmm_f", "value"]
         if not "is_standardized" in info_df.index:
-            sys.stderr.write("warning this model does not contain any information whether the input requires standardization\nuse Traitar version < 1.20\n")
-            sys.exit(1)
+            self.is_standardized = False 
         else:
+            #otherwise assume the feature used to train the model were not standardized
             self.is_standardized = True if info_df.loc["is_standardized", "value"] == "True" else False 
 
     def get_pt2acc(self):
