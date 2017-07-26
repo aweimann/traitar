@@ -245,10 +245,20 @@ class Traitar:
             #ps.DataFrame(commands).to_csv(tf, index = False, header = False) 
             p = Popen("parallel --will-cite %s -j %s" %  ("--joblog %s" % joblog if joblog is not None else "", self.cpu),  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)
             p.communicate(input = "\n".join(commands))
+            if p.returncode != 0:
+                if not joblog is None:
+                    sys.stderr.write("Non-zero exit value; commands can be found in %s\n" % joblog) 
+                else:
+                    sys.stderr.write("Non-zero exit value; command(s) %s failed\n" % "\n".join(commands)) 
+                sys.exit()
         else:
             #run in sequential order
             for i in commands:
-                subprocess.call(i,  executable = "/bin/bash", stdout = devnull, shell = True, env = env)
+                p = Popen(i,  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)
+                p.communicate(input = i)
+                if p.returncode != 0:
+                    sys.stderr.write("Non-zero exit value; command %s failed\n" % i) 
+                    sys.exit()
 
     def run_gene_prediction(self, in_samples, out_samples):
         #create output directory for the gene prediction 
@@ -267,30 +277,32 @@ class Traitar:
                 "phenolyzer_dir" : self.phenolyzer_dir}
         if mode == "from_nucleotides":
             param_dict["file_extension"] = ".faa" 
-            in_dir = os.path.join(self.output_dir, "gene_prediction")
+            param_dict["in_dir"] = os.path.join(self.output_dir, "gene_prediction")
         else:
             param_dict["file_extension"] = "" 
-            in_dir = self.input_dir
+            param_dict["in_dir"] = self.input_dir
         #create output directory for the pfam annotation 
         a_dir_base = os.path.join(self.output_dir, "annotation")
         #check if output directory already exists and trigger user input if in interactive mode
         is_recompute = self.check_dir(a_dir_base)
         #run hmmer annotation
 
-        hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
+        hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s/%(hmm_f)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
         filter_and_aggregate = "hmmer2filtered_best %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
 
         if self.secondary_models is not None and self.primary_models.get_hmm_name() != self.secondary_models.get_hmm_name():
             models = [self.primary_models, self.secondary_models]
         else:
             models = [self.primary_models]
-        for pt_models in models: 
+        for pt_models in models:
             a_dir = os.path.join(a_dir_base, pt_models.get_hmm_name())
             param_dict["a_dir"] = a_dir
-            param_dict["hmms"] =  pt_models.get_hmm_f()
+            param_dict["hmms"] =  self.config["hmms"] 
+            param_dict["hmm_f"] =  pt_models.get_hmm_f()
             param_dict["hmm_name"] =  pt_models.get_hmm_name()
             param_dict["archive_f"] =  pt_models.get_archive_f()
-            os.mkdir(a_dir)
+            if not os.path.exists(a_dir):
+                os.mkdir(a_dir)
             hmmer_commands = []
             fae_commands = []
             for i in range(len(in_samples)):
@@ -345,7 +357,7 @@ class Traitar:
             param_dict["phypat_dir"] = self.phypat_dir
             param_dict["phypat_pgl_dir"] = self.phypat_pgl_dir 
             #combine phypat and phypat+PGL predictions
-            merge_preds = "merge_preds %(out_dir)s %(phypat_dir)s %(phypat_pgl_dir)s %(primary_name)s %(secondary_name)s -k 5" % param_dict
+            merge_preds = "merge_preds %(out_dir)s/phenotype_prediction %(phypat_dir)s %(phypat_pgl_dir)s %(primary_name)s %(secondary_name)s -k 5" % param_dict
             self.execute_commands([predict_phypat, predict_phypat_pgl])
             self.execute_commands([merge_preds])
         else:
