@@ -50,8 +50,9 @@ def read_archive(input_archive, archive_type, mode, sample2cat, input_dir):
         sample_cat = pd.read_csv(sample2cat, index_col = 0, sep = "\t")
         #replace index with cleaned file names
         sample_cat.index.rename(str, dict([(tf, sfn) for sfn, tf in zip(sample_file_names, namelist)]))
-        sample_table = pd.DataFrame([sample_file_names, sample_cat.loc[sample_file_names, ]['category'].tolist()])        
-        # sample_table = pd.DataFrame([sample_file_names, sample_cat.loc[sample_file_names,]])
+        sample_table = pd.DataFrame(sample_file_names)
+        categories = pd.Series(sample_cat.loc[sample_file_names, ]['category'].tolist())
+        sample_table['category'] = categories          
         sample_table.columns = ["sample_file_name", "category"]
     else:
         sample_table = pd.DataFrame(sample_file_names)
