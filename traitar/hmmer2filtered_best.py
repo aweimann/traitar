@@ -49,7 +49,7 @@ def aggregate_domain_hits(filtered_df, out_f):
     #sort by gene identifier and Pfam
     with open(out_f, 'w') as out_fo:
         ps.DataFrame(filtered_df.columns).T.to_csv(out_f, sep = "\t", index = False, header = False, mode = 'a')
-        filtered_df.sort_values(by = ["target name", "query name"], inplace = True)
+        filtered_df.sort_index(by = ["target name", "query name"], inplace = True)
         if filtered_df.shape[0] > 0:
             current_max = filtered_df.iloc[0,] 
         else:
