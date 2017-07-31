@@ -70,3 +70,8 @@ def call_traitar(args):
     #compress output
     with tarfile.open(args.out_archive, "w:gz") as tar:
         tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
+        
+    # test case    
+    args.out2_archive = "dialign_output_aaalignment2.FILE"
+    with tarfile.open(args.out2_archive, "w:gz") as tar:
+        tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))        
