@@ -74,4 +74,4 @@ def call_traitar(args):
         tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
 
     out_image = args.out_archive.replace('.FILE', '2.FILE')
-    copyfile(args.output_dir+"/traitar_out/phenotype_prediction/heatmap_combined.pdf", out_image)
+    copyfile(args.output_dir+"/phenotype_prediction/heatmap_combined.pdf", out_image)
