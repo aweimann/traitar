@@ -93,7 +93,7 @@ which will take ~30 minutes. Note there is a problem with parallel usage so -c o
 
 # Citing Traitar
 
-If you use Traitar in your research, please cite our preprint:
+If you use Traitar in your research, please cite our paper:
 
 **From genomes to phenotypes: Traitar, the microbial trait analyzer**  
 Aaron Weimann, Kyra Mooren, Jeremy Frank, Phillip B Pope, Andreas Bremges, Alice C McHardy  
