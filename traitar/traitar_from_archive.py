@@ -73,5 +73,5 @@ def call_traitar(args):
     with tarfile.open(args.out_archive, "w:gz") as tar:
         tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
 
-    if args.out_image is not None:
-        copyfile(args.output_dir+"/phenotype_prediction/heatmap_combined.pdf", out_image)
+    if args.output_image is not None:
+        copyfile(args.output_dir+"/phenotype_prediction/heatmap_combined.pdf", output_image)
