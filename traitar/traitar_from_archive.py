@@ -36,7 +36,7 @@ def read_archive(input_archive, archive_type, mode, sample2cat, input_dir):
         archive = zipfile.open(input_archive)
         namelist = archive.namelist()
     if archive_type == "tar.gz":
-        archive = tarfile.open(input_archive, "r:gz")
+        archive = tarfile.open(input_archive, "r")
         namelist = archive.getnames()
     sample_file_names, sample_names = get_sample_names(namelist)
     for tf, sfn in zip(namelist, sample_file_names):
