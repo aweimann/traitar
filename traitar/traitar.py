@@ -42,7 +42,7 @@ def phenolyze(args):
 
 def new(args):
     """create new phenotype model archive"""
-    modify.new(args.models_dir, args.pf_acc2desc, args.pt_id2acc_desc, args.hmm_name, args.archive_name, args.is_standardized)
+    modify.new(args.models_dir, args.pf2acc_f, args.pt2desc_f, args.hmm_name,  args.archive_name, args.is_standardized, args.pt_table, args.tree)
 
 def show(args):
     """show features for the given phenotype"""
@@ -55,6 +55,7 @@ def show(args):
             pc = [PhenotypeCollection(secondary_default_models)]
     for i in pc:
         i.get_selected_features(args.phenotype, args.strategy, args.include_negative).to_csv(sys.stdout, sep = "\t", float_format='%.3f')
+
 def remove(args):
     """remove phenotypes from phenotype tar archive"""
     modify.remove(args.archive_f, args.phenotypes, args.out_f, args.keep)
