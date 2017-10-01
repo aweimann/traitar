@@ -42,7 +42,7 @@ def phenolyze(args):
 
 def new(args):
     """create new phenotype model archive"""
-    modify.new(args.models_dir, args.pf2acc_f, args.pt2desc_f, args.hmm_name,  args.archive_name, args.is_standardized, args.pt_table, args.tree)
+    modify.new(args.models_dir, args.feat2desc, args.pt2desc, args.annot_name,  args.archive_name, args.is_standardized, args.pt_table, args.tree)
 
 def show(args):
     """show features for the given phenotype"""
@@ -287,7 +287,6 @@ class Traitar:
         #check if output directory already exists and trigger user input if in interactive mode
         is_recompute = self.check_dir(a_dir_base)
         #run hmmer annotation
-
         hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s/%(hmm_f)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
         filter_and_aggregate = "hmmer2filtered_best %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
 

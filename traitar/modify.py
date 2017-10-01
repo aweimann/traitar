@@ -56,28 +56,39 @@ def extend(archive_f, model_dir, pf2acc_desc_f, pts, pfam_v):
 def new(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_standardized, pt_table, tree):
     """create new archive with phenotype models"""
     #read in pf and pt accessions 
-    pts = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0)
-    #check if models for all phenotypes exist
-    validate(models_dir, pts)
+    if pt2desc_f is not None:
+        pts = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0)
+        #check if models for all phenotypes exist
+        validate(models_dir, pts)
     create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_standardized, pt_table, tree)
 
 def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_standardized, pt_table, tree):
     #create tar archive
-    pt2desc = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0) 
+    config = {}
     t = tarfile.open("%s.tar.gz" % archive_name, "w:gz")
     t.add(pf2acc_f, arcname = "pf2acc_desc.txt")
-    t.add(pt2desc_f, arcname = "pt2acc.txt")
-    t.add(pt_table, arcname = "phenotype_table.txt")
-    cv_acc_f = os.path.join(models_dir, "cv_acc.txt")
-    if os.path.exists(cv_acc_f): 
-        t.add(os.path.join(models_dir, "cv_acc.txt"), arcname = "cv_acc.txt")
-    if tree is not None:
-        t.add(pt_table, arcname = "tree.txt")
-    with open(os.path.join(models_dir, "config.json")) as jf:    
-            config = json.load(jf)
+    if not pt2desc_f is None:
+        pt2desc = pd.read_csv(pt2desc_f, sep = "\t", index_col = 0) 
+        t.add(pt2desc_f, arcname = "pt2acc.txt")
+        for i in pt2desc.index:
+            #check if standardization parameters are available and add to model archive
+            if is_standardized:
+                mfs.append("%s_mean.txt")
+                mfs.append("%s_scale.txt")
+            for j in mfs:
+                t.add(os.path.join(models_dir, j % i), arcname = os.path.basename(os.path.join(models_dir, j % i)))
+    if not pt_table is None:
+        t.add(pt_table, arcname = "phenotype_table.txt")
+    if not models_dir is None:
+        cv_acc_f = os.path.join(models_dir, "cv_acc.txt")
+        if os.path.exists(cv_acc_f): 
+            t.add(os.path.join(models_dir, "cv_acc.txt"), arcname = "cv_acc.txt")
+        if tree is not None:
+            t.add(pt_table, arcname = "tree.txt")
+        with open(os.path.join(models_dir, "config.json")) as jf:    
+                config = json.load(jf)
     config["archive_name"] = archive_name.split("/")[-1]
-    if hmm_name is not None:
-        config["hmm_name"]  = hmm_name
+    config["annot_name"]  = hmm_name
     if is_standardized:
         config["is_standardized"] = "True"
     else:
@@ -86,13 +97,6 @@ def create_tar(models_dir, pf2acc_f, pt2desc_f, hmm_name,  archive_name, is_stan
     config_tarinfo = tarfile.TarInfo("config.txt")
     config_tarinfo.size = len(config_s.buf)
     t.addfile(config_tarinfo, config_s)
-    for i in pt2desc.index:
-        #check if standardization parameters are available and add to model archive
-        if is_standardized:
-            mfs.append("%s_mean.txt")
-            mfs.append("%s_scale.txt")
-        for j in mfs:
-            t.add(os.path.join(models_dir, j % i), arcname = os.path.basename(os.path.join(models_dir, j % i)))
     t.close()
          
     
