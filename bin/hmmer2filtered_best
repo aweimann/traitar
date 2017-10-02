@@ -6,7 +6,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("parse hmmer output file and generated filtered best file")
     parser.add_argument("infile_f", help='a space-delimited output file from hmmer', default = sys.stdin, type = file)
     parser.add_argument("out_best_f", help='hmmer tab delimited file with hits removed according to the thresholds and only best domain hit retained')
-    parser.add_argument("hmm_name", choices = ["pfam", "dbcan"], help ='name of the HMM database; this will determine the filtering applied')
+    parser.add_argument("hmm_name", help ='name of the HMM database; this will determine the filtering applied')
     parser.add_argument("--out_excl_f", help='domain hits filtered due to the applied thresholds')
     parser.add_argument("--out_filt_f", help='hmmer tab delimited file with hits removed according to the thresholds')
     #parser.add_argument("aln_cov_thresh", help = 'threshold for the alignment length coverage', type = int)
