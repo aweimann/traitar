@@ -34,4 +34,4 @@ def download(args):
     with open(os.path.abspath(os.path.dirname(__file__)) + "/" + "config.json", 'w') as config:
         if not os.path.exists(os.path.join(args.download, "Pfam-A.hmm")):
             sys.exit("something went wrong; make sure %s contains Pfam-A.hmm" % args.download)
-        config.write(json.dumps({"hmms": os.path.abspath(os.path.join(args.download))}))
+        config.write(json.dumps({"hmms": os.path.abspath(os.path.join(args.download, "Pfam-A.hmm"))}))

@@ -79,12 +79,16 @@ class Traitar:
         self.output_dir = output_dir
         self.phenolyzer_dir = os.path.abspath(os.path.dirname(__file__)) 
         self.annotation_summary = annotation_summary
+        #load  configuration file
+        with open(os.path.join(self.phenolyzer_dir, "config.json" ), "r") as cf:
+            self.config = json.load(cf)
         #set primary models either to user specified model or to default phypat model
         if primary_models is not None:
             self.primary_models = PhenotypeCollection(primary_models)
             self.primary_models.hmm_f = primary_hmm_db
         else:
             self.primary_models = PhenotypeCollection(primary_default_models)
+            self.primary_models.hmm_f =  config["hmm_f"]
         #set secondary models either to user specified model or to default phypat model
         if secondary_models is not None and primary_models is not None:
             self.secondary_models = PhenotypeCollection(secondary_models)
@@ -93,6 +97,7 @@ class Traitar:
             self.secondary_models = None
         else:
             self.secondary_models = PhenotypeCollection(secondary_default_models)
+            self.secondary_models.hmm_f =  config["hmm_f"]
         self.is_gnu_parallel_available = self.is_exe("parallel")
         self.heatmap_out = heatmap_out
         #check if GNU parallel is available when running with more than one cpu
@@ -104,8 +109,6 @@ class Traitar:
             sys.stderr.write("config.json does not exists; make sure that you have run traitar pfam")
             sys.exit(1)
             #check if Pfam hmm specified in config.json exists
-        with open(os.path.join(self.phenolyzer_dir, "config.json" ), "r") as cf:
-            self.config = json.load(cf)
         #create output dir
         self.check_dir(output_dir)
         #pred dir
@@ -287,7 +290,7 @@ class Traitar:
         #check if output directory already exists and trigger user input if in interactive mode
         is_recompute = self.check_dir(a_dir_base)
         #run hmmer annotation
-        hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmms)s/%(hmm_f)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
+        hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmm_f)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
         filter_and_aggregate = "hmmer2filtered_best %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
 
         if self.secondary_models is not None and self.primary_models.get_hmm_name() != self.secondary_models.get_hmm_name():
@@ -297,7 +300,7 @@ class Traitar:
         for pt_models in models:
             a_dir = os.path.join(a_dir_base, pt_models.get_hmm_name())
             param_dict["a_dir"] = a_dir
-            param_dict["hmms"] =  self.config["hmms"] 
+            #param_dict["hmms"] =  self.config["hmms"] 
             param_dict["hmm_f"] =  pt_models.get_hmm_f()
             param_dict["hmm_name"] =  pt_models.get_hmm_name()
             param_dict["archive_f"] =  pt_models.get_archive_f()

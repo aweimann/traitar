@@ -1,6 +1,7 @@
 import pandas as pd
 import tarfile
 import sys
+import json
 
 class PhenotypeCollection:
 
@@ -8,16 +9,16 @@ class PhenotypeCollection:
         self.archive_f = archive_f
         self.tar = tarfile.open(archive_f, mode = "r:gz")
         info = self.tar.extractfile("config.txt")
-        info_df = pd.read_csv(info, sep = "\t", index_col = 0)
-        self.name = info_df.loc["archive_name", "value"]
-        self.hmm_name = info_df.loc["hmm_name", "value"]
-        if "hmm_f" in info_df.index:
-            self.hmm_f = info_df.loc["hmm_f", "value"]
-        if not "is_standardized" in info_df.index:
+        cf = json.load(info)
+        self.name = cf["archive_name"]
+        self.hmm_name = cf["annot_name"]
+        if "hmm_f" in cf:
+            self.hmm_f = cf.loc["hmm_f"]
+        if not "is_standardized" in cf:
             self.is_standardized = False 
         else:
             #otherwise assume the feature used to train the model were not standardized
-            self.is_standardized = True if info_df.loc["is_standardized", "value"] == "True" else False 
+            self.is_standardized = True if cf["is_standardized"] == "True" else False 
 
     def get_pt2acc(self):
         """get and parse phenotype to phenotype id to accession mapping"""
