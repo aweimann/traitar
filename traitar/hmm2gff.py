@@ -184,7 +184,7 @@ def write_hmm_gff(hmmer_file, out_gff_dir, gene_dict, sample, skip_genes, mode, 
         if not gene_dict is None:
             # open global output table
             # open out gffs for reading
-            out_gffs = dict([(i, open("%s/%s_%s_important_features.gff"%(out_gff_dir, sample, id2desc.loc[i,].iloc[0].replace(" ", "_").replace("(", "_").replace("(", "_")), 'w')) for i in pts])
+            out_gffs = dict([(i, open("%s/%s_%s_important_features.gff"%(out_gff_dir, sample, i), 'w')) for i in pts])
             out_gffs["Pfams"] = open("%s/%s_complete_annotation.gff" %(out_gff_dir, sample), 'w')
             for i in out_gffs:
                 out_gffs[i].write("""##gff-version 3\n""")
