@@ -75,4 +75,9 @@ def call_traitar(args):
 
     if args.output_image is not None:
         image_source = args.output_dir+"/phenotype_prediction/heatmap_combined.%s" % args.heatmap_format
-        copyfile(image_source, args.output_image)
+        if args.output_image[0] == '/':
+            output_image = args.output_image
+        else:
+            output_image = os.path.dirname(args.out_archive)+'/'+args.output_image
+        
+        copyfile(image_source, output_image)
