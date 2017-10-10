@@ -22,6 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--secondary_hmm_db", default=None)
     parser.add_argument("--annotation_summary", default=None)
     parser.add_argument("--output_image", default=None)
+    parser.add_argument("--generate_galaxy_html", default=None)
     
     args = parser.parse_args()
     read_archive(args.input_archive, args.archive_type, args.mode, args.sample2cat, args.input_dir)
