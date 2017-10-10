@@ -70,14 +70,21 @@ def call_traitar(args):
     args.sample2file = "%s/sample_table.txt" % args.input_dir 
     phenolyze(args)
     #compress output
-    with tarfile.open(args.out_archive, "w:gz") as tar:
-        tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
+    
+    if args.generate_galaxy_html is not None:
+        # create html dir
+        # copy our image there
+        # create our tar file there
+        # copy our sample html to html file
+    else:
+        with tarfile.open(args.out_archive, "w:gz") as tar:
+            tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
 
-    if args.output_image is not None:
-        image_source = args.output_dir+"/phenotype_prediction/heatmap_combined.%s" % args.heatmap_format
-        if args.output_image[0:1] == '/':
-            output_image = args.output_image
-        else:
-            output_image = os.path.dirname(args.out_archive)+'/'+args.output_image
+        if args.output_image is not None:
+            image_source = args.output_dir+"/phenotype_prediction/heatmap_combined.%s" % args.heatmap_format
+            if args.output_image[0:1] == '/':
+                output_image = args.output_image
+            else:
+                output_image = os.path.dirname(args.out_archive)+'/'+args.output_image
         
-        copyfile(image_source, output_image)
+            copyfile(image_source, output_image)
