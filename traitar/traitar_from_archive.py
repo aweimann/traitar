@@ -3,6 +3,7 @@ import zipfile
 import pandas as pd
 import re
 import os
+import os.path
 from .traitar import phenolyze
 from shutil import copyfile
 
@@ -32,20 +33,25 @@ def read_archive(input_archive, archive_type, mode, sample2cat, input_dir):
     """read archive"""
     if not os.path.exists(input_dir):
         os.mkdir(input_dir)
-    if archive_type == "zip":
-        archive = zipfile.open(input_archive)
-        namelist = archive.namelist()
-    if archive_type == "tar.gz":
-        archive = tarfile.open(input_archive, "r")
-        namelist = archive.getnames()
-    sample_file_names, sample_names = get_sample_names(namelist)
-    for tf, sfn in zip(namelist, sample_file_names):
-            extracted = archive.extractfile(tf) 
-            with open("%s/%s" % (input_dir, sfn), 'w') as sample_file_out:
-                for line in extracted:
-                    sample_file_out.write(line) 
-            extracted.close()
-                
+
+    if archive_type == "zip" or archive_type == "tar.gz":
+        if archive_type == "zip":
+            archive = zipfile.open(input_archive)
+            namelist = archive.namelist()
+        if archive_type == "tar.gz":
+            archive = tarfile.open(input_archive, "r")
+            namelist = archive.getnames()
+        sample_file_names, sample_names = get_sample_names(namelist)
+        for tf, sfn in zip(namelist, sample_file_names):
+                extracted = archive.extractfile(tf) 
+                with open("%s/%s" % (input_dir, sfn), 'w') as sample_file_out:
+                    for line in extracted:
+                        sample_file_out.write(line) 
+                extracted.close()
+    elif archive_type == "directory":
+        for input_part in input_archive.split(','):
+            input_dir_part=os.path.basename(input_part)
+            os.symlink(input_part, input_dir+"/"+input_dir_part)
             
     #create sample table
     if sample2cat is not None:
