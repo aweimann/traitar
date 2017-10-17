@@ -6,7 +6,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser("Traitar wrapper")
     parser.add_argument("input_archive", help='directory with the input data')
-    parser.add_argument("archive_type", help='specify kind of archive', choices = ["tar.gz", "zip"])
+    parser.add_argument("archive_type", help='specify kind of archive', choices = ["tar.gz", "zip", "directory"])
     parser.add_argument("mode", help='either from_genes if gene prediction amino acid fasta is available in input_dir otherwise from_nucleotides in this case Prodigal is used to determine the ORFs from the nucleotide fasta files in input_dir', choices=["from_genes", "from_nucleotides", "from_annotation_summary"])
     parser.add_argument("out_archive", help='compressed traitar output foldder')
     parser.add_argument("-c", "--cpus", help='number of cpus used for the individual steps; maximum is number of samples; needs parallel', default = 1)
