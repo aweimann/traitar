@@ -29,7 +29,7 @@ def get_sample_names(namelist):
     
     
 
-def read_archive(input_archive, archive_type, mode, sample2cat, input_dir):
+def read_archive(input_archive, archive_type, mode, sample2cat, input_dir, input_names):
     """read archive"""
     if not os.path.exists(input_dir):
         os.mkdir(input_dir)
@@ -49,7 +49,7 @@ def read_archive(input_archive, archive_type, mode, sample2cat, input_dir):
                         sample_file_out.write(line) 
                 extracted.close()
     elif archive_type == "directory":
-        namelist = []
+        namelist = input_names.split(',')
         for input_part in input_archive.split(','):
             input_dir_part=os.path.basename(input_part)
             namelist.append([input_dir_part])
