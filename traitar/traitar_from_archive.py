@@ -49,9 +49,13 @@ def read_archive(input_archive, archive_type, mode, sample2cat, input_dir):
                         sample_file_out.write(line) 
                 extracted.close()
     elif archive_type == "directory":
+        namelist = []
         for input_part in input_archive.split(','):
             input_dir_part=os.path.basename(input_part)
+            namelist.append([input_dir_part])
             os.symlink(input_part, input_dir+"/"+input_dir_part)
+        sample_file_names, sample_names = get_sample_names(namelist)
+
             
     #create sample table
     if sample2cat is not None:
