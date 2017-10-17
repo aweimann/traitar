@@ -25,7 +25,9 @@ def annotate(args):
     p = Traitar(args.input_dir, args.output_dir, args.sample2file, args.cpus, gene_gff_type=args.gene_gff_type, primary_models = args.primary_models, secondary_models = args.secondary_models, primary_hmm_db = args.primary_hmm_db, secondary_hmm_db = args.secondary_hmm_db, annotation_summary = args.annotation_summary)
     p.annotate(args.mode)
 
+
 def evaluate(args):
+    """evaluate prediction against a gold standard"""
     evaluation.evaluate.evaluate(args.out, args.gold_standard_f, args.traitar_pred_f, args.min_samples, args.are_pt_ids, args.phenotype_archive)
 
 def phenolyze(args):
@@ -288,10 +290,12 @@ class Traitar:
         #create output directory for the pfam annotation 
         a_dir_base = os.path.join(self.output_dir, "annotation")
         #check if output directory already exists and trigger user input if in interactive mode
-        is_recompute = self.check_dir(a_dir_base)
+        is_recompute = not self.check_dir(a_dir_base)
         #run hmmer annotation
         hmmer = "hmmsearch --cpu 1 --cut_ga  --domtblout %(a_dir)s/%(out_sample)s_domtblout.dat  %(hmm_f)s > /dev/null \"%(in_dir)s/%(in_sample)s%(file_extension)s\""
         filter_and_aggregate = "hmmer2filtered_best %(a_dir)s/%(out_sample)s_domtblout.dat   %(a_dir)s/%(out_sample)s_filtered_best.dat %(hmm_name)s"
+        summary_table_single = "filtered_best2summary_table %(a_dir)s/%(out_sample)s_summary_table.dat   <(echo %(a_dir)s/%(out_sample)s_filtered_best.dat) %(archive_f)s"
+         #       self.execute_commands([domtblout2gene_generic], joblog = os.path.join(a_dir, "joblog_generate_annotation_matrix.txt"))
 
         if self.secondary_models is not None and self.primary_models.get_hmm_name() != self.secondary_models.get_hmm_name():
             models = [self.primary_models, self.secondary_models]
@@ -308,28 +312,40 @@ class Traitar:
                 os.mkdir(a_dir)
             hmmer_commands = []
             fae_commands = []
+            ss_commands = []
+
             for i in range(len(in_samples)):
                 fname_hmm = os.path.join(a_dir, out_samples[i] + "_domtblout.dat")
                 fname_filtered = os.path.join(a_dir, out_samples[i] + "_filtered_best.dat")
+                fname_summary_single = os.path.join(a_dir, out_samples[i] + "_summary_table.dat")
                 param_dict["in_sample"] = in_samples[i]
                 param_dict["out_sample"] = out_samples[i]
                 if not os.path.isfile(fname_hmm):
                     hmmer_commands.append(hmmer % param_dict) 
+                    fae_commands.append(filter_and_aggregate % param_dict)
+                    ss_commands.append(summary_table_single % param_dict)
                     if is_recompute:
                         print "hmmer output %s is missing; recomputing ..." %fname_hmm  
                 #run filtering and best domain hit aggregation
-                if not os.path.isfile(fname_filtered):
+                elif not os.path.isfile(fname_filtered):
+                    print "missing"
                     if is_recompute:
                         print "filtered hmmer output %s is missing; recomputing ..." %fname_filtered
                     fae_commands.append(filter_and_aggregate % param_dict)
-            self.execute_commands(hmmer_commands, joblog = os.path.join(a_dir, "joblog_hmmer.txt"))
-            self.execute_commands(fae_commands, joblog = os.path.join(a_dir, "joblog_filter_and_aggregate.txt"))
-            if not os.path.exists(os.path.join(a_dir, "summary.dat")):
+                    ss_commands.append(summary_table_single % param_dict)
+                elif not os.path.isfile(fname_summary_single):
+                    if is_recompute:
+                        print "summary annotation table output %s is missing; recomputing ..." %fname_filtered
+                    ss_commands.append(summary_table_single % param_dict)
+            self.execute_commands(hmmer_commands, joblog = os.path.join(a_dir, "joblog_hmmer.txt"), cpus = self.cpu)
+            self.execute_commands(fae_commands, joblog = os.path.join(a_dir, "joblog_filter_and_aggregate.txt"), cpus = self.cpu)
+            self.execute_commands(ss_commands, joblog = os.path.join(a_dir, "joblog_individual_annotation_summary.txt"), cpus = self.cpu)
+            if not os.path.exists(os.path.join(a_dir, "summary.dat")) or ss_commands + fae_commands + hmmer_commands:
                 if is_recompute:
                     print "annotation summary matrix is missing; recomputing ..." 
                 #run summary matrix computation
-                domtblout2gene_generic = "domtblout2gene_generic %(a_dir)s/summary.dat  <(ls %(a_dir)s/*_filtered_best.dat) %(archive_f)s" % param_dict
-                self.execute_commands([domtblout2gene_generic], joblog = os.path.join(a_dir, "joblog_generate_annotation_matrix.txt"))
+                individual2overall_summary = "individual2overall_summary_table %(a_dir)s/summary.dat  <(ls %(a_dir)s/*_summary_table.dat)" % param_dict
+                self.execute_commands([individual2overall_summary], joblog = os.path.join(a_dir, "joblog_overall_annotation_summary.txt"), cpus = self.cpu)
 
 
     def run_phenotype_prediction(self):
@@ -361,10 +377,10 @@ class Traitar:
             param_dict["phypat_pgl_dir"] = self.phypat_pgl_dir 
             #combine phypat and phypat+PGL predictions
             merge_preds = "merge_preds %(out_dir)s/phenotype_prediction %(phypat_dir)s %(phypat_pgl_dir)s %(primary_name)s %(secondary_name)s -k 5" % param_dict
-            self.execute_commands([predict_phypat, predict_phypat_pgl])
-            self.execute_commands([merge_preds])
+            self.execute_commands([predict_phypat, predict_phypat_pgl], cpus = self.cpu)
+            self.execute_commands([merge_preds], cpus = self.cpu)
         else:
-            self.execute_commands([predict_phypat])
+            self.execute_commands([predict_phypat], cpus = self.cpu)
     
     def run_feature_track_generation(self, in_samples, mode, gene_gffs = None, gene_gff_type = "prodigal"):
         """map the phenotype relevant protein families and write mapping to disk"""
@@ -423,7 +439,7 @@ class Traitar:
         if is_recompute:
             if not self.secondary_models is None:
                 os.mkdir(os.path.join(self.phypat_pgl_dir, "feat_gffs"))
-            self.execute_commands(h2gff_commands) 
+            self.execute_commands(h2gff_commands, cpus = self.cpu) 
         if mode != "from_nucleotides" and gene_gffs is None:
             ftco = os.path.join(self.pred_dir, "feature_track_commands.txt")
             sys.stderr.write("tracks with Pfams relevant for the predictions cannot be ad-hoc generated because the input is amino acids and no gene prediction GFF files have been generated\n commands are saved to %s and can be modified and run manually\n" % ftco)
@@ -448,4 +464,4 @@ class Traitar:
             for i in [hm_dict_phypat, hm_dict_phypat_pgl, hm_dict_comb]:
                 i.update(hm_dict)
                 cmds.append(hm_cmd % i)
-        self.execute_commands(cmds)
+        self.execute_commands(cmds, cpus = self.cpu)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from traitar.PhenotypeCollection import PhenotypeCollection
-from traitar.domtblout2gene_generic import gene2hmm 
+from traitar.filtered_best2summary_table import gene2hmm 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser("generate summary matrix from the filtered best hmmer annotation files")

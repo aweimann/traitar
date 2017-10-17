@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+from traitar.individual2overall_summary_table import make_summary_table
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser("generate summary annotation table from the individual sample annotation tables")
+    parser.add_argument("annotation_tables", help='list of file names of individual sample annotation tables')
+    parser.add_argument("out_table", help='summary matrix output file')
+    args = parser.parse_args()
+    make_summary_table(args.annotation_tables, args.out_table)

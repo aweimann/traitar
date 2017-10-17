@@ -48,7 +48,7 @@ def aggregate_domain_hits(filtered_df, out_f):
     """look for best scoring domain in each gene"""
     #sort by gene identifier and Pfam
     with open(out_f, 'w') as out_fo:
-        ps.DataFrame(filtered_df.columns).T.to_csv(out_f, sep = "\t", index = False, header = False, mode = 'a')
+        ps.DataFrame(filtered_df.columns).T.to_csv(out_f, sep = "\t", index = False, header = False)
         filtered_df.sort_values(by = ["target name", "query name"], inplace = True)
         if filtered_df.shape[0] > 0:
             current_max = filtered_df.iloc[0,] 
