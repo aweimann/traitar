@@ -18,7 +18,7 @@ def validate(model_dir, pts):
 
 def remove(archive_f, phenotypes, out_f, keep = False):
     """remove given phenotypes from the pt archive and write a new archive"""
-    pts = pd.read_csv(phenotypes, index_col = 0, header = None)
+    pts = pd.read_csv(phenotypes, sep = "\t")
     pts.index = pts.index.values.astype('string')
     ptc = PhenotypeCollection.PhenotypeCollection(archive_f)
     pt2acc = ptc.get_pt2acc()
@@ -35,9 +35,13 @@ def remove(archive_f, phenotypes, out_f, keep = False):
     members.append((t.extractfile("pf2acc_desc.txt"), t.getmember("pf2acc_desc.txt")))
     members.append((t.extractfile("config.txt"), t.getmember("config.txt")))
     for i in pt2acc.index:
-        members.append((t.extractfile("%s_non-zero+weights.txt" % i),t.getmember("%s_non-zero+weights.txt" % i)))
-        members.append((t.extractfile("%s_bias.txt" % i), t.getmember("%s_bias.txt" % i)))
-        members.append((t.extractfile("%s_feats.txt" % i), t.getmember("%s_feats.txt" % i)))
+        for file_name in mfs:
+            members.append((t.extractfile(file_name % i),t.getmember(file_name % i)))
+            try:
+                members.append((t.extractfile("%s_mean.txt" % i),t.getmember("%s_mean.txt" % i)))
+                members.append((t.extractfile("%s_scale.txt" % i),t.getmember("%s_scale.txt" % i)))
+            except KeyError:
+                pass
     out_tar = tarfile.open("%s" % out_f, "w:gz")
     out_tar.addfile(pt2acc_tarinfo, pt2acc_s)
     for m in members:

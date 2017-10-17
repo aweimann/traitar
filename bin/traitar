@@ -5,6 +5,7 @@ from traitar.traitar import remove
 from traitar.traitar import show 
 from traitar.traitar import new 
 from traitar.traitar import evaluate 
+from traitar.traitar import submit 
 from traitar.get_external_data import download 
 from traitar.traitar import __version__ 
 import os
@@ -46,11 +47,12 @@ if __name__ == "__main__":
     ann_p = subparsers.add_parser("annotate", parents=[parent_p], help = "run annotation")
     ann_p.set_defaults(func = annotate)
     show_p = subparsers.add_parser("show", help = "show features important for classification") 
-    show_p.add_argument("phenotype", help = "phenotype under investigation")
-    show_p.add_argument("--predictor", help = "pick phypat or phypat+PGL classifier", choices = ["phypat", "phypat+PGL"], default = "phypat")
-    show_p.add_argument("--strategy", choices = ["non-zero", "majority"], default = "majority")
-    show_p.add_argument("-i", "--include_negative", action = 'store_true')
-    show_p.add_argument("-p", "--models_f", help='phenotype models archive; if set, look for the target in the phenotype in the given phenotype collection')
+    show_p.add_argument("--markers_for_phenotype", help = "phenotype under investigation")
+    show_p.add_argument("--phenotypes", action = 'store_true', help = "phenotype under investigation")
+    show_p.add_argument("--predictor", help = "pick primary or secondary phenotype model collection", choices = ["primary", "secondary"], default = "primary")
+    show_p.add_argument("--strategy", choices = ["non-zero", "majority"], default = "majority", help = "show all markers (non-zero) or only those non-zero in the majority of the models (majority)")
+    show_p.add_argument("-i", "--include_negative", action = 'store_true', help = "show also markers associated with the phenotype-negative class")
+    show_p.add_argument("-p", "--models_f", help='inpsect this phenotype model collection instead of the built in primary or secondary phenotype collections')
     show_p.set_defaults(func = show)
     #extend_p = subparsers.add_parser("extend", help = "extend existing phenotype models") 
     #extend_p.add_argument("new_models_dir", help='directory with phenotype models to be included')
@@ -84,6 +86,12 @@ if __name__ == "__main__":
     data_p.add_argument("download",  help = "download Pfam HMMs into the given download directory and untar and unzip it")
     data_p.add_argument("--local", "-l", action = 'store_true', help = "the Pfam HMMs are in the above directory with name 'Pfam-A.hmm'")
     data_p.set_defaults(func = download)
+    submit_p = subparsers.add_parser("submit", help = "submit a previously created Traitar phenotype model collection to the public GitHub repository of Traitar phenotype model collection") 
+    submit_p.add_argument("phenotype_collection", help = "phenotype collection to be uploaded to the public repository of Traitar phenotype model collections")
+    submit_p.add_argument("readme", help = "Short free text description of this phenotype collection to be included on GitHub")
+    submit_p.add_argument("author", help = "Your name")
+    submit_p.add_argument("email", help = "Your contact details")
+    submit_p.set_defaults(func = submit)
     args = parser.parse_args()
     args.func(args)
 

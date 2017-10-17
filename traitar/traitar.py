@@ -49,14 +49,18 @@ def new(args):
 def show(args):
     """show features for the given phenotype"""
     if args.models_f is not None:
-        pc = [PhenotypeCollection(args.models_f)]
+        pc = PhenotypeCollection(args.models_f)
     else:
         if args.predictor == "phypat":
-            pc = [PhenotypeCollection(primary_default_models)]
+            pc = PhenotypeCollection(primary_default_models)
         else:
-            pc = [PhenotypeCollection(secondary_default_models)]
-    for i in pc:
-        i.get_selected_features(args.phenotype, args.strategy, args.include_negative).to_csv(sys.stdout, sep = "\t", float_format='%.3f')
+            pc = PhenotypeCollection(secondary_default_models)
+    if args.markers_for_phenotype:
+        pc.get_selected_features(args.markers_for_phenotype, args.strategy, args.include_negative).to_csv(sys.stdout, sep = "\t", float_format='%.3f')
+    elif args.phenotypes:
+        pc.get_phenotype_summary()
+    else:
+        pc.get_summary()
 
 def remove(args):
     """remove phenotypes from phenotype tar archive"""
@@ -64,6 +68,32 @@ def remove(args):
 
 def extend(args):
     pass
+
+def submit(args):
+    """submit phenotype model collection"""
+    #make sure readme and phenotype collection exist
+    if not os.path.exists(args.phenotype_collection):
+        sys.stderr.write("Phenotype model collection does not exists on path %s\n" %args.phenotype_collection)
+        sys.exit(1)
+    if not os.path.exists(args.readme):
+        sys.stderr.write("Readme does not exists under path %s\n" % args.readme)
+        sys.exit(1)
+    pc = PhenotypeCollection(args.phenotype_collection)
+    cp_archive = "cp %s ." % args.phenotype_collection
+    readme_destination = "%s.README.txt" % pc.name
+    with open(readme_destination, 'w') as readme:
+        readme.write("@author: %s\n" % args.author)
+        readme.write("@email: %s\n" % args.email)
+        with open(args.readme) as readme_open:
+            for l in readme_open:
+                readme.write(l)
+    add_pc = "git add %s" % os.path.basename(args.phenotype_collection)
+    add_readme = "git add %s" % readme_destination 
+    commit = "git commit -m 'Added phenotype collection %s'" % pc.name
+    push = "git push origin master"
+    for cmd in cp_archive, add_pc, add_readme, commit, push:
+        Traitar.execute_commands([cmd])
+
 
 class Traitar:
 
@@ -240,16 +270,17 @@ class Traitar:
         self.run_heatmap_generation(self.s2f.loc[:,"sample_name"])
         sys.stdout.flush()
     
-    def execute_commands(self, commands, joblog = None):
+    @staticmethod
+    def execute_commands(commands, cpus = 1, joblog = None):
         devnull = open('/dev/null', 'w')
         from subprocess import Popen, PIPE
         if len(commands) == 0:
             #nothing to do
             return
-        if self.cpu > 1:
+        if cpus > 1:
             #run with parallel
             #ps.DataFrame(commands).to_csv(tf, index = False, header = False) 
-            p = Popen("parallel --will-cite %s -j %s" %  ("--joblog %s" % joblog if joblog is not None else "", self.cpu),  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)
+            p = Popen("parallel --will-cite %s -j %s" %  ("--joblog %s" % joblog if joblog is not None else "", cpus),  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)
             p.communicate(input = "\n".join(commands))
             if p.returncode != 0:
                 if not joblog is None:
