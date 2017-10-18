@@ -86,13 +86,13 @@ def call_traitar(args):
     #compress output
     
     if args.generate_galaxy_html is not None:
-        (html_file, html_dir) = args.generate_galaxy_html. split(':')
+        (html_file, html_dir) = args.generate_galaxy_html.split(':')
         os.makedirs(html_dir)
         image_name = args.output_dir+"/phenotype_prediction/heatmap_combined.%s" % args.heatmap_format
         copyfile(image_name, html_dir)
         with tarfile.open(html_dir+"/archive.tar.gz", "w:gz") as tar:
             tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
-        copyfile('html/sample.html', html_file)
+        copyfile('/home/traitar/traitar/html/sample.html', html_file)
     else:
         with tarfile.open(args.out_archive, "w:gz") as tar:
             tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
