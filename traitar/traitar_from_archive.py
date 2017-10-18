@@ -89,7 +89,8 @@ def call_traitar(args):
         (html_file, html_dir) = args.generate_galaxy_html.split(':')
         os.makedirs(html_dir)
         image_name = args.output_dir+"/phenotype_prediction/heatmap_combined.%s" % args.heatmap_format
-        copyfile(image_name, html_dir)
+        target_image_name = html_dir+"/phenotype_prediction/heatmap_combined.%s" % args.heatmap_format
+        copyfile(image_name, target_image_name)
         with tarfile.open(html_dir+"/archive.tar.gz", "w:gz") as tar:
             tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
         copyfile('/home/traitar/traitar/html/sample.html', html_file)
