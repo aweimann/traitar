@@ -50,6 +50,7 @@ def read_archive(input_archive, archive_type, mode, sample2cat, input_dir, input
                 extracted.close()
     elif archive_type == "directory":
         sample_names = input_names.split(',')
+        sample_file_names = []
         for input_part in input_archive.split(','):
             input_dir_part=os.path.basename(input_part)
             sample_file_names.append(input_dir_part)
