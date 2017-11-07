@@ -94,6 +94,8 @@ def call_traitar(args):
         with tarfile.open(html_dir+"/archive.tar.gz", "w:gz") as tar:
             tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
         copyfile('/home/traitar/traitar/traitar/html/sample.html', html_file)
+        logo_file = html_dir+"/traitar.png"
+        copyfile('/home/traitar/traitar/traitar/html/traitar.png', logo_file)
     else:
         with tarfile.open(args.out_archive, "w:gz") as tar:
             tar.add(args.output_dir, arcname=os.path.basename(args.output_dir))
