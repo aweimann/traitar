@@ -243,8 +243,7 @@ class Traitar:
         if self.cpu > 1:
             #run with parallel
             #ps.DataFrame(commands).to_csv(tf, index = False, header = False) 
-            # p = Popen("parallel --will-cite %s -j %s" %  ("--joblog %s" % joblog if joblog is not None else "", self.cpu),  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)       
-            p = Popen("parallel %s -j %s" %  ("--joblog %s" % joblog if joblog is not None else "", self.cpu),  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)
+            p = Popen("parallel --will-cite %s -j %s" %  ("--joblog %s" % joblog if joblog is not None else "", self.cpu),  stdout = devnull, shell = True,  executable = "/bin/bash", stdin = PIPE, env = env)       
             p.communicate(input = "\n".join(commands))
             if p.returncode != 0:
                 if not joblog is None:
