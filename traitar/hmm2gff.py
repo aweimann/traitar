@@ -227,9 +227,7 @@ def write_hmm_gff(hmmer_file, out_gff_dir, gene_dict, sample, skip_genes, mode, 
     if not len(out_table) == 0:
         out_table_df = ps.read_csv(StringIO.StringIO("".join(out_table)), sep = "\t", header = None)
         out_table_df.columns = ["Phenotype", "gene_id", "acc", "description", "cor"]
-        # out_table_df.sort_values(columns = ["Phenotype", "cor"], ascending = [True, False]).to_csv("%s/%s_important_features.dat" % (out_gff_dir, sample), sep = "\t", index = None)        
-        # out_table_df.sort_values(by = ["Phenotype", "cor"], ascending = [True, False]).to_csv("%s/%s_important_features.dat" % (out_gff_dir, sample), sep = "\t", index = None)
-        out_table_df.sort(columns = ["Phenotype", "cor"], ascending = [True, False]).to_csv("%s/%s_important_features.dat" % (out_gff_dir, sample), sep = "\t", index = None)
+        out_table_df.sort_values(by = ["Phenotype", "cor"], ascending = [True, False]).to_csv("%s/%s_important_features.dat" % (out_gff_dir, sample), sep = "\t", index = None)
     #close out gffs
     if not gene_dict is None:
         for i in out_gffs:
